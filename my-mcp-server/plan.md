@@ -1,1181 +1,1349 @@
-# 🚀 Engineering Operations Intelligence Platform — Implementation Plan
+# Enterprise Knowledge Integrity MCP Server — Implementation Plan
 
 > **MCP Hackathon Project**
-> An MCP-powered platform that investigates engineering bottlenecks and discovers automation opportunities across enterprise tools.
+> An MCP server that detects when authoritative enterprise knowledge changes, traces what depends on it, finds contradictions, assesses risk, proposes fixes, and records everything — all through MCP tools an LLM can orchestrate.
+
+---
+
+## Core Pipeline
+
+```
+LLM → MCP Server → detect changed facts → trace dependent knowledge
+    → find contradictions → assess risk → propose remediation
+    → human approval → update → audit
+```
 
 ---
 
 ## Table of Contents
 
-1. [Architecture Overview](#architecture-overview)
-2. [Tech Stack](#tech-stack)
-3. [Phase 0 — Project Scaffolding & Infrastructure](#phase-0--project-scaffolding--infrastructure)
-4. [Phase 1 — MCP Data Connectors (Tool Integrations)](#phase-1--mcp-data-connectors-tool-integrations)
-5. [Phase 2 — Core Intelligence Engine](#phase-2--core-intelligence-engine)
-6. [Phase 3 — Feature 1: Engineering Bottleneck Investigator](#phase-3--feature-1-engineering-bottleneck-investigator)
-7. [Phase 4 — Feature 2: Workflow Discovery & Automation](#phase-4--feature-2-workflow-discovery--automation)
-8. [Phase 5 — Unified Dashboard (Widgets UI)](#phase-5--unified-dashboard-widgets-ui)
-9. [Phase 6 — Integration Testing & Demo Preparation](#phase-6--integration-testing--demo-preparation)
-10. [File/Module Map](#filemodule-map)
-11. [Risk Mitigation](#risk-mitigation)
-12. [Demo Script](#demo-script)
+1. [Architecture](#architecture)
+2. [Tech Stack & Existing Codebase](#tech-stack--existing-codebase)
+3. [Phase 1 — Project Scaffolding](#phase-1--project-scaffolding)
+4. [Phase 2 — Synthetic Knowledge Base](#phase-2--synthetic-knowledge-base)
+5. [Phase 3 — Knowledge Dependency Model](#phase-3--knowledge-dependency-model)
+6. [Phase 4 — Core MCP Tools (Detection & Traversal)](#phase-4--core-mcp-tools-detection--traversal)
+7. [Phase 5 — Validation & Conflict Tools](#phase-5--validation--conflict-tools)
+8. [Phase 6 — Provenance & Risk Tools](#phase-6--provenance--risk-tools)
+9. [Phase 7 — Remediation & Audit Tools](#phase-7--remediation--audit-tools)
+10. [Phase 8 — High-Level Investigation Tool](#phase-8--high-level-investigation-tool)
+11. [Phase 9 — MCP Client Connection & Demo](#phase-9--mcp-client-connection--demo)
+12. [File Map](#file-map)
+13. [Complete Tool Reference](#complete-tool-reference)
+14. [Demo Script](#demo-script)
 
 ---
 
-## Architecture Overview
+## Architecture
 
 ```
-┌──────────────────────────────────────────────────────────────┐
-│                    USER / ENGINEERING MANAGER                 │
-│               (NitroStack Chat + Widget Dashboard)           │
-└──────────────────────────┬───────────────────────────────────┘
-                           │
-                           ▼
-┌──────────────────────────────────────────────────────────────┐
-│                  MCP APPLICATION (NitroStack)                 │
-│                                                              │
-│  ┌─────────────────┐  ┌──────────────────────────────────┐  │
-│  │  MCP Tools       │  │  MCP Prompts                     │  │
-│  │  (Exposed to AI) │  │  (Investigation Templates)       │  │
-│  └────────┬────────┘  └──────────────┬───────────────────┘  │
-│           │                          │                       │
-│           ▼                          ▼                       │
-│  ┌──────────────────────────────────────────────────────┐   │
-│  │              INTELLIGENCE ENGINE                      │   │
-│  │                                                       │   │
-│  │  ┌─────────────────┐  ┌─────────────────────────┐    │   │
-│  │  │ Bottleneck       │  │ Workflow Discovery      │    │   │
-│  │  │ Analyzer         │  │ Engine                  │    │   │
-│  │  └────────┬────────┘  └────────────┬────────────┘    │   │
-│  │           │                        │                  │   │
-│  │           ▼                        ▼                  │   │
-│  │  ┌──────────────────────────────────────────────┐    │   │
-│  │  │        Signal Correlator & Scorer            │    │   │
-│  │  └──────────────────────────────────────────────┘    │   │
-│  └──────────────────────────────────────────────────────┘   │
-│           │                                                  │
-│           ▼                                                  │
-│  ┌──────────────────────────────────────────────────────┐   │
-│  │              DATA CONNECTOR LAYER                     │   │
-│  │                                                       │   │
-│  │  ┌──────────┐ ┌──────────┐ ┌────────┐ ┌──────────┐  │   │
-│  │  │ GitHub   │ │  Jira    │ │ Slack  │ │  CI/CD   │  │   │
-│  │  │ Connector│ │ Connector│ │Connector│ │ Connector│  │   │
-│  │  └──────────┘ └──────────┘ └────────┘ └──────────┘  │   │
-│  └──────────────────────────────────────────────────────┘   │
-│                                                              │
-│  ┌──────────────────────────────────────────────────────┐   │
-│  │              WIDGETS (Next.js Dashboard)              │   │
-│  │                                                       │   │
-│  │  ┌─────────────┐ ┌──────────┐ ┌──────────────────┐  │   │
-│  │  │ Bottleneck  │ │ Workflow │ │ Risk Dashboard   │  │   │
-│  │  │ Report      │ │ Discovery│ │                  │  │   │
-│  │  └─────────────┘ └──────────┘ └──────────────────┘  │   │
-│  └──────────────────────────────────────────────────────┘   │
-└──────────────────────────────────────────────────────────────┘
+Claude / ChatGPT / NitroStudio (MCP Client)
+                │
+                │  MCP Protocol (STDIO / HTTP SSE)
+                ▼
+┌───────────────────────────────────────────────┐
+│  Enterprise Knowledge Integrity MCP Server     │
+│  (NitroStack — TypeScript)                     │
+│                                                │
+│  ┌───────────────────────────────────────────┐ │
+│  │             MCP TOOLS (9 tools)           │ │
+│  │                                           │ │
+│  │  detect_source_changes                    │ │
+│  │  find_affected_knowledge                  │ │
+│  │  validate_claim                           │ │
+│  │  detect_knowledge_conflicts               │ │
+│  │  trace_knowledge_provenance               │ │
+│  │  assess_knowledge_risk                    │ │
+│  │  propose_knowledge_update                 │ │
+│  │  approve_knowledge_update                 │ │
+│  │  get_audit_log                            │ │
+│  └─────────────────┬─────────────────────────┘ │
+│                    │                            │
+│  ┌─────────────────▼─────────────────────────┐ │
+│  │           SERVICES LAYER                  │ │
+│  │                                           │ │
+│  │  ChangeDetectionService                   │ │
+│  │  DependencyService                        │ │
+│  │  ValidationService                        │ │
+│  │  ConflictService                          │ │
+│  │  ProvenanceService                        │ │
+│  │  RiskService                              │ │
+│  │  RemediationService                       │ │
+│  │  AuditService                             │ │
+│  └─────────────────┬─────────────────────────┘ │
+│                    │                            │
+│  ┌─────────────────▼─────────────────────────┐ │
+│  │       KNOWLEDGE DATA LAYER                │ │
+│  │                                           │ │
+│  │  authoritative_sources.json   (versioned) │ │
+│  │  authoritative_sources_v1.json (previous) │ │
+│  │  documents.json               (20+ docs)  │ │
+│  │  dependencies.json            (graph)     │ │
+│  │  pending_updates.json         (proposals) │ │
+│  │  audit_log.json               (history)   │ │
+│  └───────────────────────────────────────────┘ │
+└───────────────────────────────────────────────┘
 ```
 
 ---
 
-## Tech Stack
+## Tech Stack & Existing Codebase
 
-| Layer              | Technology                                              |
-| ------------------ | ------------------------------------------------------- |
-| **MCP Framework**  | NitroStack (`@nitrostack/core`) — decorators, modules   |
-| **Language**       | TypeScript (strict mode)                                |
-| **Runtime**        | Node.js (ES Modules)                                    |
-| **Widget UI**      | Next.js 14 + React 18 (`@nitrostack/widgets`)           |
-| **API Clients**    | Octokit (GitHub), Jira REST API, Slack Web API           |
-| **Data Models**    | Zod schemas for all inputs/outputs                      |
-| **Transport**      | STDIO (dev) / Dual STDIO+HTTP SSE (prod)                |
-| **Config**         | dotenv + NitroStack ConfigModule                        |
+### What we're building on
 
----
+The project already has a working NitroStack MCP server (calculator starter template):
 
-## Phase 0 — Project Scaffolding & Infrastructure
+| Component | File | Status |
+|-----------|------|--------|
+| Entry point | `src/index.ts` | **Keep as-is** — bootstrap logic is generic |
+| App module | `src/app.module.ts` | **Modify** — swap calculator for knowledge modules |
+| Calculator module | `src/modules/calculator/*` | **Delete** — replace entirely |
+| Health check | `src/health/system.health.ts` | **Keep as-is** |
+| Widgets | `src/widgets/*` | **Keep for later** — optional dashboard |
+| Config | `.env.example` | **Simplify** — no external APIs needed |
 
-> **Goal:** Transform the calculator starter template into the platform's foundation.
-> **Estimated Time:** 1–2 hours
+### Key NitroStack patterns to follow
 
-### 0.1 — Clean Up Starter Code
-
-- Remove `src/modules/calculator/` entirely (all 4 files)
-- Remove calculator widget from `src/widgets/app/`
-- Update `widget-manifest.json` to remove calculator entries
-- Rename server in `app.module.ts`:
-  - `name: 'calculator-server'` → `name: 'eng-ops-intelligence-server'`
-  - `version: '1.0.0'`
-
-### 0.2 — Environment Configuration
-
-Update `.env.example` and create `.env` with required API keys:
-
-```env
-# NitroStack
-NITRO_LOG_LEVEL=info
-NITROSTACK_APP_MODE=universal
-
-# GitHub Integration
-GITHUB_TOKEN=ghp_xxxxx
-GITHUB_ORG=your-org
-GITHUB_DEFAULT_REPOS=repo1,repo2
-
-# Jira Integration
-JIRA_BASE_URL=https://your-domain.atlassian.net
-JIRA_EMAIL=user@example.com
-JIRA_API_TOKEN=xxxxx
-JIRA_PROJECT_KEY=PROJ
-
-# Slack Integration
-SLACK_BOT_TOKEN=xoxb-xxxxx
-SLACK_CHANNEL_IDS=C01XXXX,C02XXXX
-
-# CI/CD Integration (GitHub Actions used as default)
-CICD_PROVIDER=github_actions
-# Optional: Jenkins, CircleCI
-# JENKINS_URL=https://jenkins.example.com
-# JENKINS_TOKEN=xxxxx
-
-# AI / LLM (for analysis augmentation — optional)
-OPENAI_API_KEY=sk-xxxxx
-
-# Transport
-# MCP_TRANSPORT_TYPE=stdio
-# PORT=3000
-```
-
-### 0.3 — Shared Types & Interfaces
-
-Create `src/shared/` directory with:
-
-```
-src/shared/
-├── types/
-│   ├── github.types.ts        # PR, Commit, Review interfaces
-│   ├── jira.types.ts          # Issue, Sprint, Board interfaces
-│   ├── slack.types.ts         # Message, Channel, Thread interfaces
-│   ├── cicd.types.ts          # Build, Pipeline, TestResult interfaces
-│   ├── investigation.types.ts # Evidence, RootCause, Signal interfaces
-│   └── workflow.types.ts      # WorkflowPattern, AutomationOpportunity interfaces
-├── schemas/
-│   └── index.ts               # Zod schemas for all MCP tool inputs/outputs
-├── constants.ts               # Severity levels, risk thresholds, etc.
-└── utils/
-    ├── date.utils.ts          # Time-window helpers, SLA calculators
-    ├── scoring.utils.ts       # Risk scoring, priority calculations
-    └── correlation.utils.ts   # Signal correlation helpers
-```
-
-### 0.4 — Module Registration
-
-Update `app.module.ts` to prepare for new module imports:
+From the existing calculator code, these are the decorator patterns we must use:
 
 ```typescript
+// Tools — @ToolDecorator
+import { ToolDecorator as Tool, ExecutionContext, z } from '@nitrostack/core';
+
+@Tool({
+  name: 'tool_name',
+  description: 'What this tool does',
+  inputSchema: z.object({ ... })
+})
+async myTool(input: any, ctx: ExecutionContext) { ... }
+
+// Resources — @ResourceDecorator
+import { ResourceDecorator as Resource } from '@nitrostack/core';
+
+@Resource({
+  uri: 'knowledge://sources',
+  name: 'Name',
+  description: 'Description',
+  mimeType: 'application/json'
+})
+async getResource(uri: string, ctx: ExecutionContext) { ... }
+
+// Prompts — @PromptDecorator
+import { PromptDecorator as Prompt } from '@nitrostack/core';
+
+@Prompt({
+  name: 'prompt_name',
+  description: 'Description',
+  arguments: [{ name: 'arg', description: 'desc', required: true }]
+})
+async myPrompt(args: any, ctx: ExecutionContext) { ... }
+
+// Modules — @Module
+import { Module } from '@nitrostack/core';
+
+@Module({
+  name: 'module-name',
+  description: 'Description',
+  controllers: [ToolsClass, ResourcesClass, PromptsClass]
+})
+export class MyModule {}
+```
+
+### No external APIs needed
+
+This project uses **only synthetic JSON data**. No GitHub tokens, no Jira API, no Slack integration. The entire knowledge base is self-contained in JSON files within the project. This makes the demo 100% reliable and reproducible.
+
+---
+
+## Phase 1 — Project Scaffolding
+
+> **README Stage 1** · Estimated time: **30 minutes**
+
+### 1.1 — Remove Calculator Module
+
+Delete the entire `src/modules/calculator/` directory (4 files):
+- `calculator.module.ts`
+- `calculator.tools.ts`
+- `calculator.resources.ts`
+- `calculator.prompts.ts`
+
+### 1.2 — Update App Module
+
+Modify `src/app.module.ts`:
+
+```typescript
+import { McpApp, Module, ConfigModule } from '@nitrostack/core';
+import { KnowledgeIntegrityModule } from './modules/knowledge/knowledge.module.js';
+import { SystemHealthCheck } from './health/system.health.js';
+
 @McpApp({
   module: AppModule,
   server: {
-    name: 'eng-ops-intelligence-server',
+    name: 'knowledge-integrity-server',
     version: '1.0.0'
   },
-  logging: { level: 'info' }
+  logging: {
+    level: 'info'
+  }
 })
 @Module({
   name: 'app',
-  description: 'Engineering Operations Intelligence Platform',
+  description: 'Enterprise Knowledge Integrity MCP Server — detects knowledge contradictions, traces dependencies, and manages remediation with human approval.',
   imports: [
     ConfigModule.forRoot(),
-    // Phase 1 connectors
-    GitHubConnectorModule,
-    JiraConnectorModule,
-    SlackConnectorModule,
-    CICDConnectorModule,
-    // Phase 3 & 4 feature modules
-    BottleneckInvestigatorModule,
-    WorkflowDiscoveryModule,
+    KnowledgeIntegrityModule,
   ],
-  providers: [SystemHealthCheck]
+  providers: [
+    SystemHealthCheck,
+  ]
 })
 export class AppModule {}
 ```
 
-### 0.5 — Install Dependencies
+### 1.3 — Simplify Environment Config
 
-```bash
-npm install @octokit/rest slack-web-api node-fetch
-npm install -D @types/node
+Update `.env.example` — no external API keys needed:
+
+```env
+# NitroStack Configuration
+NITRO_LOG_LEVEL=info
+NITROSTACK_APP_MODE=universal
+
+# Transport
+# MCP_TRANSPORT_TYPE=stdio
+# PORT=3000
+# HOST=localhost
 ```
 
-> **Note:** Jira and CI/CD connectors will use raw HTTP via `fetch` to minimize dependencies.
-
----
-
-## Phase 1 — MCP Data Connectors (Tool Integrations)
-
-> **Goal:** Build the data-collection layer — each connector is an independent NitroStack module that exposes MCP tools for querying external systems.
-> **Estimated Time:** 4–6 hours
-
-### 1.1 — GitHub Connector Module
-
-**Directory:** `src/modules/github/`
+### 1.4 — Create Directory Structure
 
 ```
-src/modules/github/
-├── github.module.ts          # @Module registration
-├── github.service.ts         # Octokit wrapper, API calls
-├── github.tools.ts           # MCP tools exposed to AI
-├── github.resources.ts       # MCP resources (cached data snapshots)
-└── github.prompts.ts         # MCP prompts for GitHub-specific queries
-```
-
-**MCP Tools to Expose:**
-
-| Tool Name                    | Description                                  | Input Schema                                       |
-| ---------------------------- | -------------------------------------------- | -------------------------------------------------- |
-| `github_get_open_prs`        | List open PRs for a repo with review status  | `{ repo: string, state?: string }`                 |
-| `github_get_pr_review_stats` | Get avg review time, reviewer workload       | `{ repo: string, days?: number }`                  |
-| `github_get_merge_delays`    | Find PRs waiting > N days for merge          | `{ repo: string, threshold_days: number }`         |
-| `github_get_commit_activity` | Commit frequency and contributor breakdown   | `{ repo: string, days?: number }`                  |
-| `github_get_branch_status`   | Stale branches, divergence from main         | `{ repo: string }`                                 |
-| `github_get_ci_checks`       | CI check status for recent PRs               | `{ repo: string, pr_number?: number }`             |
-
-**Key Data Extracted:**
-
-- PR age, review turnaround time, reviewer assignment distribution
-- Commit velocity trends (daily/weekly)
-- Branch staleness and merge conflict risk
-- CI check pass/fail rates per PR
-
-**Service Layer Logic (`github.service.ts`):**
-
-```typescript
-export class GitHubService {
-  private octokit: Octokit;
-
-  async getOpenPRs(repo: string): Promise<PullRequestSummary[]>;
-  async getPRReviewStats(repo: string, days: number): Promise<ReviewStats>;
-  async getMergeDelays(repo: string, thresholdDays: number): Promise<DelayedPR[]>;
-  async getCommitActivity(repo: string, days: number): Promise<CommitActivity>;
-  async getBranchStatus(repo: string): Promise<BranchStatus[]>;
-}
+src/
+├── index.ts                          # Keep (no changes)
+├── app.module.ts                     # Modify (Phase 1.2)
+├── health/
+│   └── system.health.ts              # Keep (no changes)
+│
+├── data/                             # NEW — Synthetic knowledge base
+│   ├── authoritative_sources.json    # Current version of truth
+│   ├── authoritative_sources_v1.json # Previous version (for change detection)
+│   ├── documents.json                # 20+ enterprise documents with claims
+│   ├── dependencies.json             # Fact → Document dependency graph
+│   ├── pending_updates.json          # Proposed remediations (starts empty)
+│   └── audit_log.json                # Approved changes history (starts empty)
+│
+├── types/                            # NEW — TypeScript interfaces
+│   └── index.ts                      # All type definitions
+│
+├── services/                         # NEW — Business logic
+│   ├── data-loader.service.ts        # Loads/writes JSON data files
+│   ├── change-detection.service.ts   # Compares source versions
+│   ├── dependency.service.ts         # Traverses dependency graph
+│   ├── validation.service.ts         # Validates claims against facts
+│   ├── conflict.service.ts           # Detects cross-document contradictions
+│   ├── provenance.service.ts         # Traces knowledge origin
+│   ├── risk.service.ts               # Deterministic risk scoring
+│   ├── remediation.service.ts        # Proposes & applies updates
+│   └── audit.service.ts              # Records all approved changes
+│
+└── modules/
+    └── knowledge/                    # NEW — MCP module
+        ├── knowledge.module.ts       # Module registration
+        ├── knowledge.tools.ts        # All 9 MCP tools
+        ├── knowledge.resources.ts    # MCP resources (knowledge base access)
+        └── knowledge.prompts.ts      # MCP prompt templates
 ```
 
 ---
 
-### 1.2 — Jira Connector Module
+## Phase 2 — Synthetic Knowledge Base
 
-**Directory:** `src/modules/jira/`
+> **README Stage 2** · Estimated time: **1–1.5 hours**
 
-```
-src/modules/jira/
-├── jira.module.ts
-├── jira.service.ts           # REST API client (fetch-based)
-├── jira.tools.ts
-├── jira.resources.ts
-└── jira.prompts.ts
-```
+### 2.1 — Type Definitions
 
-**MCP Tools to Expose:**
-
-| Tool Name                     | Description                                    | Input Schema                                                |
-| ----------------------------- | ---------------------------------------------- | ----------------------------------------------------------- |
-| `jira_get_sprint_status`      | Current sprint completion %, velocity          | `{ project: string, board_id?: number }`                    |
-| `jira_get_blocked_issues`     | Issues with "Blocked" status or flag           | `{ project: string }`                                       |
-| `jira_get_overdue_issues`     | Issues past their due date                     | `{ project: string, days_overdue?: number }`                |
-| `jira_get_dependency_graph`   | Issues blocking other issues (linked issues)   | `{ project: string, issue_key?: string }`                   |
-| `jira_get_workload`           | Assignee workload distribution                 | `{ project: string }`                                       |
-| `jira_get_cycle_time`         | Average time from In Progress → Done           | `{ project: string, days?: number }`                        |
-
-**Key Data Extracted:**
-
-- Sprint burndown / completion percentage
-- Blocked issue chains (A blocks B blocks C)
-- Assignee overload detection
-- Cycle time anomalies (tasks taking 3x average)
-
----
-
-### 1.3 — Slack Connector Module
-
-**Directory:** `src/modules/slack/`
-
-```
-src/modules/slack/
-├── slack.module.ts
-├── slack.service.ts          # Slack Web API client
-├── slack.tools.ts
-├── slack.resources.ts
-└── slack.prompts.ts
-```
-
-**MCP Tools to Expose:**
-
-| Tool Name                       | Description                                     | Input Schema                                      |
-| ------------------------------- | ----------------------------------------------- | ------------------------------------------------- |
-| `slack_search_messages`         | Search for keywords in channels                 | `{ query: string, channels?: string[], days?: number }` |
-| `slack_get_blocker_mentions`    | Find messages mentioning blockers/waiting/stuck | `{ channels?: string[], days?: number }`          |
-| `slack_get_incident_threads`    | Identify incident-related threads               | `{ channels?: string[], days?: number }`          |
-| `slack_get_channel_activity`    | Message volume and participation stats          | `{ channel: string, days?: number }`              |
-| `slack_get_decision_threads`    | Threads with decisions or approvals             | `{ channels?: string[], days?: number }`          |
-
-**Key Data Extracted:**
-
-- Blocker keyword frequency ("blocked", "waiting for", "stuck on", "can't proceed")
-- Incident thread detection and resolution times
-- Decision bottleneck detection (unanswered decision threads)
-- Communication pattern anomalies
-
-**Smart Keyword Lists (configurable):**
+**File:** `src/types/index.ts`
 
 ```typescript
-const BLOCKER_KEYWORDS = [
-  'blocked', 'blocking', 'stuck', 'waiting for',
-  'can\'t proceed', 'dependency', 'need approval',
-  'who owns', 'help needed', 'urgent'
-];
-
-const INCIDENT_KEYWORDS = [
-  'incident', 'outage', 'downtime', 'production issue',
-  'hotfix', 'rollback', 'P0', 'P1', 'severity'
-];
-```
-
----
-
-### 1.4 — CI/CD Connector Module
-
-**Directory:** `src/modules/cicd/`
-
-```
-src/modules/cicd/
-├── cicd.module.ts
-├── cicd.service.ts           # Supports GitHub Actions (primary), extensible
-├── cicd.tools.ts
-├── cicd.resources.ts
-└── cicd.prompts.ts
-```
-
-**MCP Tools to Expose:**
-
-| Tool Name                      | Description                                   | Input Schema                                      |
-| ------------------------------ | --------------------------------------------- | ------------------------------------------------- |
-| `cicd_get_build_status`        | Recent build pass/fail rates                  | `{ repo: string, days?: number }`                 |
-| `cicd_get_failed_pipelines`    | List currently failing pipelines              | `{ repo: string }`                                |
-| `cicd_get_flaky_tests`         | Tests that intermittently fail                | `{ repo: string, days?: number }`                 |
-| `cicd_get_deployment_history`  | Recent deployment success/failure timeline    | `{ repo: string, environment?: string }`          |
-| `cicd_get_build_duration_trend`| Build time trends (detecting slowdowns)       | `{ repo: string, days?: number }`                 |
-
-**Key Data Extracted:**
-
-- Build failure rate trends
-- Flaky test identification
-- Deployment frequency and failure rate
-- Build duration degradation
-
----
-
-### 1.5 — Mock Data Layer (Hackathon Demo Support)
-
-> **Critical for Hackathon:** Create a mock data provider that returns realistic simulated data when real API tokens are not available.
-
-**Directory:** `src/shared/mock/`
-
-```
-src/shared/mock/
-├── mock-data.provider.ts     # Central mock data factory
-├── github.mock.ts            # Realistic GitHub mock data
-├── jira.mock.ts              # Realistic Jira mock data
-├── slack.mock.ts             # Realistic Slack mock data
-└── cicd.mock.ts              # Realistic CI/CD mock data
-```
-
-**Strategy:**
-- Each connector service checks `process.env.USE_MOCK_DATA === 'true'`
-- If true, returns pre-built realistic data that tells a compelling demo story
-- Mock data is pre-seeded to demonstrate a clear bottleneck scenario:
-  - **Project "Phoenix"** is delayed
-  - Backend reviewer (Alice) is overloaded with 12 pending reviews
-  - 3 frontend tasks blocked by backend API dependency
-  - CI pipeline failing on integration tests due to API contract change
-  - Slack channels have repeated "waiting for backend" messages
-
----
-
-## Phase 2 — Core Intelligence Engine
-
-> **Goal:** Build the analysis layer that correlates signals across data sources and produces actionable insights.
-> **Estimated Time:** 3–4 hours
-
-### 2.1 — Signal Collector
-
-**File:** `src/engine/signal-collector.ts`
-
-Aggregates raw data from all connectors into a normalized `Signal` format:
-
-```typescript
-interface Signal {
-  id: string;
-  source: 'github' | 'jira' | 'slack' | 'cicd';
-  type: SignalType;         // 'review_delay' | 'blocked_task' | 'build_failure' | 'blocker_mention' | ...
-  severity: 'low' | 'medium' | 'high' | 'critical';
-  timestamp: Date;
-  summary: string;          // Human-readable description
-  rawData: Record<string, any>;
-  relatedEntities: string[]; // PR numbers, issue keys, user IDs
-}
-```
-
-**Signal Types Supported:**
-
-| Source | Signal Types |
-|--------|-------------|
-| GitHub | `review_delay`, `stale_branch`, `merge_conflict_risk`, `low_commit_activity`, `reviewer_overload` |
-| Jira   | `blocked_task`, `overdue_issue`, `sprint_risk`, `workload_imbalance`, `dependency_chain` |
-| Slack  | `blocker_mention`, `incident_thread`, `unanswered_decision`, `escalation_pattern` |
-| CI/CD  | `build_failure`, `flaky_test`, `deployment_failure`, `build_slowdown` |
-
-### 2.2 — Signal Correlator
-
-**File:** `src/engine/signal-correlator.ts`
-
-Finds relationships between signals across different sources:
-
-```typescript
-interface Correlation {
-  signals: Signal[];                  // The correlated signals
-  correlationType: CorrelationType;   // 'causal_chain' | 'common_entity' | 'temporal_proximity'
-  confidence: number;                 // 0.0 – 1.0
-  narrative: string;                  // AI-generated explanation of the relationship
-}
-```
-
-**Correlation Strategies:**
-
-1. **Entity Matching:** Link signals that reference the same PR, issue, person, or component
-   - Example: `review_delay` on PR #214 + `blocked_task` on PROJ-456 (which references PR #214)
-
-2. **Temporal Proximity:** Link signals that occurred within a configurable time window
-   - Example: `build_failure` at 2pm + `blocker_mention` in Slack at 2:15pm
-
-3. **Causal Chain Detection:** Identify cascading effects
-   - Example: `reviewer_overload` → `review_delay` → `blocked_task` → `sprint_risk`
-
-4. **Pattern Matching:** Identify recurring patterns
-   - Example: Every Monday, `build_failure` occurs after deployment
-
-### 2.3 — Risk Scorer
-
-**File:** `src/engine/risk-scorer.ts`
-
-Computes an overall project risk score and per-dimension risk breakdown:
-
-```typescript
-interface RiskAssessment {
-  overallRisk: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
-  overallScore: number;              // 0–100
-  dimensions: {
-    codeReview: number;              // 0–100
-    taskCompletion: number;
-    buildHealth: number;
-    teamCommunication: number;
-    dependencies: number;
-  };
-  topRisks: RankedRisk[];           // Sorted by impact
-  estimatedDelay: string;            // "3–5 days", "1–2 weeks"
-  recommendations: Recommendation[];
-}
-```
-
-**Scoring Algorithm:**
-
-```
-overallScore =
-  (codeReview × 0.25) +
-  (taskCompletion × 0.25) +
-  (buildHealth × 0.20) +
-  (dependencies × 0.20) +
-  (teamCommunication × 0.10)
-```
-
-Each dimension score is computed from its constituent signals:
-
-- **Code Review (25%):** PR age, review turnaround, reviewer workload, unreviewed PR count
-- **Task Completion (25%):** Sprint completion %, blocked tasks, overdue issues, cycle time
-- **Build Health (20%):** Build pass rate, flaky test count, deployment failure rate
-- **Dependencies (20%):** Blocked chains, cross-team dependencies, external API issues
-- **Communication (10%):** Unanswered questions, incident thread resolution time
-
-### 2.4 — Recommendation Engine
-
-**File:** `src/engine/recommendation-engine.ts`
-
-Generates actionable recommendations from risk assessments:
-
-```typescript
-interface Recommendation {
-  id: string;
-  priority: 'immediate' | 'short_term' | 'long_term';
-  category: 'process' | 'people' | 'technical' | 'communication';
-  title: string;
-  description: string;
-  expectedImpact: string;
-  effort: 'low' | 'medium' | 'high';
-  automatable: boolean;             // Links to Feature 2
-}
-```
-
-**Example Recommendations:**
-
-| Trigger | Recommendation |
-|---------|---------------|
-| Reviewer overload detected | "Assign 2 additional reviewers to the backend team to reduce avg review time from 3 days to 8 hours" |
-| Recurring Monday build failures | "Investigate weekend deployment pipeline — 80% of Monday failures trace to Saturday auto-deploys" |
-| 5 tasks blocked by single dependency | "Prioritize PROJ-123 (Backend API) — it unblocks 5 downstream tasks worth 21 story points" |
-
----
-
-## Phase 3 — Feature 1: Engineering Bottleneck Investigator
-
-> **Goal:** Expose the intelligence engine as MCP tools and prompts that an AI can use to investigate engineering delays.
-> **Estimated Time:** 3–4 hours
-
-### 3.1 — Investigator Module
-
-**Directory:** `src/modules/investigator/`
-
-```
-src/modules/investigator/
-├── investigator.module.ts
-├── investigator.service.ts    # Orchestrates the investigation pipeline
-├── investigator.tools.ts      # MCP tools for investigation
-├── investigator.prompts.ts    # Investigation prompt templates
-└── investigator.resources.ts  # Cached investigation reports
-```
-
-### 3.2 — MCP Tools
-
-| Tool Name                           | Description                                                           |
-| ----------------------------------- | --------------------------------------------------------------------- |
-| `investigate_project`               | Full investigation: collects signals, correlates, scores, recommends  |
-| `get_project_risk_score`            | Quick risk assessment without full investigation                      |
-| `find_bottlenecks`                  | Identify top N bottlenecks for a project/team                         |
-| `get_blocker_chain`                 | Trace a specific blocker through all systems                          |
-| `compare_sprint_health`             | Compare current sprint to previous sprints                            |
-| `get_team_workload_analysis`        | Analyze workload distribution across team members                     |
-| `get_investigation_report`          | Generate a formatted investigation report                             |
-
-### 3.3 — Investigation Pipeline (Orchestration)
-
-```
-User Query: "Why is Project Phoenix delayed?"
-                │
-                ▼
-┌─────────────────────────────────────┐
-│  1. PARSE INVESTIGATION SCOPE       │
-│     - Extract: project, team, time  │
-│     - Determine: scope, depth       │
-└──────────────┬──────────────────────┘
-               │
-               ▼
-┌─────────────────────────────────────┐
-│  2. COLLECT SIGNALS (Parallel)      │
-│     ┌──────────────────────────┐    │
-│     │ GitHub → PR delays,      │    │
-│     │          review stats    │    │
-│     ├──────────────────────────┤    │
-│     │ Jira   → Blocked tasks,  │    │
-│     │          sprint status   │    │
-│     ├──────────────────────────┤    │
-│     │ Slack  → Blocker mentions│    │
-│     ├──────────────────────────┤    │
-│     │ CI/CD  → Build failures  │    │
-│     └──────────────────────────┘    │
-└──────────────┬──────────────────────┘
-               │
-               ▼
-┌─────────────────────────────────────┐
-│  3. CORRELATE SIGNALS               │
-│     - Entity matching               │
-│     - Temporal proximity            │
-│     - Causal chain detection        │
-└──────────────┬──────────────────────┘
-               │
-               ▼
-┌─────────────────────────────────────┐
-│  4. SCORE & RANK                    │
-│     - Risk assessment               │
-│     - Bottleneck ranking            │
-│     - Delay estimation              │
-└──────────────┬──────────────────────┘
-               │
-               ▼
-┌─────────────────────────────────────┐
-│  5. GENERATE REPORT                 │
-│     - Root cause analysis           │
-│     - Evidence summary              │
-│     - Recommendations               │
-│     - Visual dashboard data         │
-└─────────────────────────────────────┘
-```
-
-### 3.4 — MCP Prompts (Investigation Templates)
-
-```typescript
-@Prompt({
-  name: 'investigate_delay',
-  description: 'Investigate why a project or sprint is delayed',
-  arguments: [
-    { name: 'project', description: 'Project name or key', required: true },
-    { name: 'timeframe', description: 'Lookback period (e.g., "last 2 weeks")', required: false }
-  ]
-})
-```
-
-**Prompts to Create:**
-
-| Prompt Name              | Purpose                                          |
-| ------------------------ | ------------------------------------------------ |
-| `investigate_delay`      | Full delay investigation                         |
-| `daily_standup_prep`     | Pre-standup risk summary                         |
-| `sprint_health_check`    | Mid-sprint health assessment                     |
-| `team_capacity_review`   | Workload balance analysis                        |
-| `release_readiness`      | Pre-release risk checklist                       |
-| `incident_postmortem`    | Post-incident signal analysis                    |
-
-### 3.5 — Report Output Format
-
-The investigation tool returns a structured JSON that powers both text responses and widget visualizations:
-
-```typescript
-interface InvestigationReport {
+// ===== Authoritative Sources =====
+export interface AuthoritativeSource {
+  id: string;                        // e.g., "discount-policy"
+  title: string;                     // e.g., "Enterprise Discount Policy"
+  department: string;                // e.g., "Finance"
+  version: string;                   // e.g., "2.0"
+  effective_date: string;            // ISO date
+  facts: Record<string, string>;     // e.g., { "maximum_discount": "10%" }
   metadata: {
-    project: string;
-    investigatedAt: string;
-    timeframeStart: string;
-    timeframeEnd: string;
-    dataSources: string[];
+    owner: string;
+    last_updated: string;
+    classification: 'public' | 'internal' | 'confidential';
   };
-  riskAssessment: RiskAssessment;
-  rootCauses: {
-    primary: RootCause;
-    contributing: RootCause[];
+}
+
+// ===== Documents & Claims =====
+export interface Document {
+  id: string;                        // e.g., "sales-playbook"
+  title: string;                     // e.g., "Enterprise Sales Playbook"
+  department: string;                // e.g., "Sales"
+  type: 'playbook' | 'guide' | 'template' | 'training' | 'sop' | 'policy';
+  last_reviewed: string;             // ISO date
+  criticality: 'low' | 'medium' | 'high' | 'critical';
+  customer_facing: boolean;
+  claims: Claim[];
+}
+
+export interface Claim {
+  id: string;                        // e.g., "sales-playbook.claim-1"
+  text: string;                      // e.g., "Sales can provide discounts up to 20%."
+  depends_on: string | null;         // e.g., "discount-policy.maximum_discount" or null
+  section: string;                   // e.g., "Pricing Guidelines"
+}
+
+// ===== Dependencies =====
+export interface Dependency {
+  source_id: string;                 // Authoritative source ID
+  fact_key: string;                  // Fact within the source
+  dependent_document_id: string;     // Document that depends on this fact
+  dependent_claim_id: string;        // Specific claim
+  dependency_type: 'direct' | 'indirect';
+}
+
+// ===== Change Detection =====
+export interface FactChange {
+  source_id: string;
+  source_title: string;
+  fact_key: string;
+  old_value: string;
+  new_value: string;
+  changed: boolean;
+}
+
+// ===== Validation =====
+export type ValidationStatus = 'VALID' | 'CONFLICT' | 'AMBIGUOUS';
+
+export interface ClaimValidation {
+  document_id: string;
+  document_title: string;
+  claim_id: string;
+  claim_text: string;
+  depends_on: string;
+  authoritative_value: string;
+  status: ValidationStatus;
+  explanation: string;
+}
+
+// ===== Risk =====
+export interface RiskAssessment {
+  document_id: string;
+  document_title: string;
+  claim_id: string;
+  risk_level: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  risk_score: number;                // 0–100
+  factors: {
+    customer_facing: boolean;
+    financial_impact: boolean;
+    compliance_impact: boolean;
+    operational_impact: boolean;
+    confirmed_conflict: boolean;
+    document_criticality: string;
   };
-  evidence: Evidence[];
-  correlations: Correlation[];
-  recommendations: Recommendation[];
-  timeline: TimelineEvent[];        // For visual timeline widget
+  reasons: string[];
+}
+
+// ===== Remediation =====
+export type UpdateStatus = 'AWAITING_APPROVAL' | 'APPROVED' | 'REJECTED' | 'APPLIED';
+
+export interface ProposedUpdate {
+  id: string;                        // UUID
+  document_id: string;
+  document_title: string;
+  claim_id: string;
+  current_text: string;
+  suggested_text: string;
+  authoritative_source: string;
+  authoritative_fact: string;
+  authoritative_value: string;
+  risk_level: string;
+  status: UpdateStatus;
+  proposed_at: string;               // ISO timestamp
+}
+
+// ===== Audit =====
+export interface AuditEntry {
+  id: string;                        // UUID
+  timestamp: string;                 // ISO timestamp
+  action: 'UPDATE_APPROVED' | 'UPDATE_REJECTED' | 'UPDATE_APPLIED';
+  document_id: string;
+  document_title: string;
+  claim_id: string;
+  old_value: string;
+  new_value: string;
+  authoritative_source: string;
+  reason: string;
+  risk_level: string;
+}
+
+// ===== Provenance =====
+export interface ProvenanceChain {
+  claim: {
+    document_id: string;
+    document_title: string;
+    claim_id: string;
+    claim_text: string;
+  };
+  depends_on_fact: string;
+  source_history: {
+    source_id: string;
+    source_title: string;
+    version: string;
+    value: string;
+    status: 'current' | 'superseded';
+  }[];
+  is_current: boolean;
 }
 ```
+
+### 2.2 — Authoritative Sources (Current — v2)
+
+**File:** `src/data/authoritative_sources.json`
+
+Create **5–6 authoritative source documents**, each with multiple facts. These represent the **current truth**.
+
+| Source ID | Title | Key Facts |
+|-----------|-------|-----------|
+| `discount-policy` | Enterprise Discount Policy | `maximum_discount: "10%"`, `approval_required_above: "5%"`, `discount_authority: "VP Sales"` |
+| `data-retention-policy` | Data Retention Policy | `retention_period: "7 years"`, `deletion_method: "certified destruction"`, `backup_frequency: "daily"` |
+| `remote-work-policy` | Remote Work Policy | `remote_days_per_week: "3"`, `core_hours: "10am-3pm"`, `equipment_stipend: "$1000"` |
+| `vendor-approval-policy` | Vendor Approval Policy | `approval_threshold: "$10,000"`, `required_approvers: "2"`, `preferred_vendors_only: "true"` |
+| `security-policy` | Information Security Policy | `password_rotation: "90 days"`, `mfa_required: "true"`, `data_classification_levels: "4"` |
+| `expense-policy` | Travel & Expense Policy | `max_hotel_rate: "$200/night"`, `meal_per_diem: "$75"`, `flight_class: "economy"` |
+
+### 2.3 — Authoritative Sources (Previous — v1)
+
+**File:** `src/data/authoritative_sources_v1.json`
+
+Same structure but with **different values** to create detectable changes:
+
+| Source ID | Fact | v1 (Old) | v2 (Current) | Change Type |
+|-----------|------|----------|-------------|-------------|
+| `discount-policy` | `maximum_discount` | `"20%"` | `"10%"` | Reduced |
+| `discount-policy` | `approval_required_above` | `"10%"` | `"5%"` | Stricter |
+| `discount-policy` | `discount_authority` | `"Regional Manager"` | `"VP Sales"` | Elevated |
+| `data-retention-policy` | `retention_period` | `"5 years"` | `"7 years"` | Extended |
+| `remote-work-policy` | `remote_days_per_week` | `"5"` | `"3"` | Reduced |
+| `remote-work-policy` | `equipment_stipend` | `"$500"` | `"$1000"` | Increased |
+| `security-policy` | `password_rotation` | `"180 days"` | `"90 days"` | Stricter |
+
+### 2.4 — Enterprise Documents (20+ documents)
+
+**File:** `src/data/documents.json`
+
+Create **20–25 documents** with a deliberate mix of:
+
+| Category | Count | Examples |
+|----------|-------|---------|
+| ✅ **Correct** (references current values) | 6–8 | Pricing Guide says "10% max discount" |
+| ❌ **Outdated/Conflicting** (references old values) | 8–10 | Sales Playbook says "20% max discount" |
+| ❓ **Ambiguous** (references policy generically) | 3–4 | "Follow current discount policy" |
+| ➖ **Unrelated** (no fact dependencies) | 3–4 | Company Mission Statement |
+
+**Documents to create:**
+
+| # | Document ID | Title | Department | Criticality | Customer-Facing | Has Conflicts? |
+|---|-------------|-------|-----------|-------------|-----------------|----------------|
+| 1 | `sales-playbook` | Enterprise Sales Playbook | Sales | critical | yes | ❌ discount: 20% |
+| 2 | `proposal-template` | Client Proposal Template | Sales | critical | yes | ❌ discount: 20% |
+| 3 | `pricing-guide` | Internal Pricing Guide | Finance | high | no | ✅ discount: 10% |
+| 4 | `sales-training` | New Hire Sales Training | Sales | medium | no | ❌ discount: 20% |
+| 5 | `discount-approval-sop` | Discount Approval Process SOP | Sales | high | no | ❌ authority: Regional Manager |
+| 6 | `partner-agreement` | Channel Partner Agreement | Legal | critical | yes | ❌ discount: 20% |
+| 7 | `quarterly-review-deck` | Quarterly Business Review Deck | Executive | high | yes | ❓ "current policy" |
+| 8 | `data-handling-guide` | Customer Data Handling Guide | Engineering | critical | no | ❌ retention: 5 years |
+| 9 | `privacy-faq` | Customer Privacy FAQ | Support | high | yes | ❌ retention: 5 years |
+| 10 | `compliance-checklist` | Annual Compliance Checklist | Legal | critical | no | ✅ retention: 7 years |
+| 11 | `remote-work-guide` | Employee Remote Work Guide | HR | medium | no | ❌ remote days: 5 |
+| 12 | `onboarding-handbook` | New Employee Onboarding | HR | medium | no | ❌ stipend: $500 |
+| 13 | `it-setup-guide` | IT Equipment Setup Guide | IT | low | no | ❌ stipend: $500 |
+| 14 | `vendor-onboarding` | Vendor Onboarding Checklist | Procurement | high | no | ❌ threshold: $25,000 |
+| 15 | `procurement-sop` | Procurement Standard Process | Procurement | medium | no | ✅ threshold: $10,000 |
+| 16 | `security-training` | Annual Security Training | IT Security | high | no | ❌ password: 180 days |
+| 17 | `security-quickstart` | Security Quick Start Guide | IT Security | medium | no | ❌ password: 180 days |
+| 18 | `incident-response` | Security Incident Response Plan | IT Security | critical | no | ✅ mfa: true |
+| 19 | `travel-guidelines` | Business Travel Guidelines | Finance | medium | no | ✅ per diem: $75 |
+| 20 | `expense-faq` | Expense Report FAQ | Finance | low | no | ✅ hotel: $200 |
+| 21 | `company-values` | Company Values & Mission | Executive | low | yes | ➖ no dependencies |
+| 22 | `brand-guidelines` | Brand & Communications Guide | Marketing | medium | yes | ➖ no dependencies |
+| 23 | `engineering-standards` | Engineering Code Standards | Engineering | medium | no | ➖ no dependencies |
+
+Each document has 2–5 claims. Each claim either `depends_on` a specific `source.fact` or has `null` for no dependency.
+
+### 2.5 — Dependencies Graph
+
+**File:** `src/data/dependencies.json`
+
+Pre-computed graph of every `depends_on` relationship. This is derived from the documents but stored separately for efficient traversal.
+
+```json
+[
+  {
+    "source_id": "discount-policy",
+    "fact_key": "maximum_discount",
+    "dependent_document_id": "sales-playbook",
+    "dependent_claim_id": "sales-playbook.claim-1",
+    "dependency_type": "direct"
+  },
+  ...
+]
+```
+
+### 2.6 — Runtime State Files (Start Empty)
+
+**File:** `src/data/pending_updates.json` → `[]`
+**File:** `src/data/audit_log.json` → `[]`
+
+These get populated at runtime when the LLM proposes and approves updates.
 
 ---
 
-## Phase 4 — Feature 2: Workflow Discovery & Automation
+## Phase 3 — Knowledge Dependency Model
 
-> **Goal:** Analyze cross-system activity patterns to discover repetitive workflows and propose automation opportunities.
-> **Estimated Time:** 3–4 hours
+> **README Stage 3** · Estimated time: **45 minutes**
 
-### 4.1 — Workflow Discovery Module
+### 3.1 — Data Loader Service
 
-**Directory:** `src/modules/workflow-discovery/`
+**File:** `src/services/data-loader.service.ts`
 
-```
-src/modules/workflow-discovery/
-├── workflow-discovery.module.ts
-├── workflow-discovery.service.ts
-├── workflow-discovery.tools.ts
-├── workflow-discovery.prompts.ts
-├── workflow-discovery.resources.ts
-├── pattern-detector.ts             # Pattern detection algorithms
-└── automation-scorer.ts            # ROI calculator for automation
-```
-
-### 4.2 — MCP Tools
-
-| Tool Name                             | Description                                                        |
-| ------------------------------------- | ------------------------------------------------------------------ |
-| `discover_workflows`                  | Scan all connected systems for repetitive workflow patterns        |
-| `analyze_workflow_pattern`            | Deep-dive into a specific detected pattern                         |
-| `calculate_automation_roi`            | Estimate time/cost savings from automating a workflow              |
-| `generate_automation_blueprint`       | Create a step-by-step automation plan for a workflow               |
-| `get_workflow_frequency_report`       | Show most frequent cross-system action sequences                   |
-| `get_automation_opportunities`        | Ranked list of automation opportunities by ROI                     |
-| `simulate_automation`                 | Dry-run: show what would happen if a workflow were automated       |
-
-### 4.3 — Pattern Detection Engine
-
-**File:** `src/modules/workflow-discovery/pattern-detector.ts`
-
-Detects repeating action sequences across systems:
+Central service that reads/writes all JSON data files. Every other service goes through this.
 
 ```typescript
-interface WorkflowPattern {
-  id: string;
-  name: string;                       // AI-generated name
-  description: string;
-  steps: WorkflowStep[];
-  frequency: {
-    occurrences: number;
-    period: 'day' | 'week' | 'month';
-    lastOccurrence: Date;
-  };
-  actors: string[];                   // People who perform this workflow
-  systems: string[];                  // Systems involved
-  avgDurationMinutes: number;
-  manualEffortHoursPerMonth: number;
-}
+export class DataLoaderService {
+  // Read operations (all data files)
+  getAuthoritativeSources(): AuthoritativeSource[];
+  getPreviousSources(): AuthoritativeSource[];
+  getDocuments(): Document[];
+  getDependencies(): Dependency[];
+  getPendingUpdates(): ProposedUpdate[];
+  getAuditLog(): AuditEntry[];
 
-interface WorkflowStep {
-  order: number;
-  system: 'github' | 'jira' | 'slack' | 'cicd' | 'email';
-  action: string;                     // "Create issue", "Post message", "Merge PR"
-  description: string;
-  isManual: boolean;
-  avgDurationMinutes: number;
+  // Write operations (only for remediation + audit)
+  savePendingUpdates(updates: ProposedUpdate[]): void;
+  saveAuditLog(entries: AuditEntry[]): void;
+  updateDocument(docId: string, claimId: string, newText: string): void;
 }
 ```
 
-**Detection Strategies:**
+**Key detail:** Uses `import.meta.url` or `__dirname` equivalent to resolve `src/data/*.json` paths. All reads are synchronous via `fs.readFileSync` for simplicity (hackathon).
 
-1. **Temporal Sequence Mining:**
-   - Detect that action A (Slack message) is consistently followed by action B (Jira ticket creation) within N minutes
-   - Example: Bug report in Slack → Jira ticket created → Developer assigned → Slack notification
+### 3.2 — Dependency Service
 
-2. **Periodic Pattern Detection:**
-   - Identify actions that repeat on a schedule
-   - Example: Every Monday morning — sprint data exported, report created, emailed
+**File:** `src/services/dependency.service.ts`
 
-3. **Cross-System Action Chains:**
-   - Detect multi-system workflows that always involve the same sequence of tools
-   - Example: PR merged → deployment triggered → Slack notification → Jira status updated
-
-4. **Role-Based Pattern Detection:**
-   - Identify workflows specific to roles (managers, leads, QA)
-   - Example: Manager's daily routine — check Jira board, review PRs, post standup summary
-
-### 4.4 — Automation Scorer (ROI Calculator)
-
-**File:** `src/modules/workflow-discovery/automation-scorer.ts`
+Traverses the dependency graph to answer: "What depends on this fact?"
 
 ```typescript
-interface AutomationOpportunity {
-  workflowPattern: WorkflowPattern;
-  automationScore: number;             // 0–100
-  roi: {
-    timeSavedPerMonth: number;         // hours
-    costSavedPerMonth: number;         // estimated $$
-    implementationEffort: 'low' | 'medium' | 'high';
-    breakEvenWeeks: number;
-  };
-  feasibility: {
-    apiAvailability: boolean;          // Can all steps be automated via APIs?
-    requiresHumanJudgment: boolean;    // Does any step need human decision?
-    riskLevel: 'low' | 'medium' | 'high';
-  };
-  automationBlueprint: AutomationBlueprint;
+export class DependencyService {
+  constructor(private dataLoader: DataLoaderService) {}
+
+  // Given a source + fact, return all dependent documents & claims
+  findAffectedKnowledge(sourceId: string, factKey: string): AffectedKnowledge;
+
+  // Given a document, return what authoritative sources it depends on
+  findDocumentDependencies(documentId: string): DocumentDependency[];
+
+  // Get full dependency tree for a source (all facts, all dependents)
+  getFullDependencyTree(sourceId: string): DependencyTree;
 }
 ```
 
-**Scoring Formula:**
+**Supports both direct and indirect dependencies:**
+- **Direct:** Document claim explicitly references `source.fact`
+- **Indirect:** Document A references source S, Document B references Document A (if we model doc-to-doc deps)
 
-```
-automationScore =
-  (frequency × 0.30) +
-  (timeSavedPerExecution × 0.25) +
-  (numberOfManualSteps × 0.20) +
-  (apiAvailability × 0.15) +
-  (lowRisk × 0.10)
-```
-
-### 4.5 — Automation Blueprint Generator
-
-Produces a concrete automation plan:
-
-```typescript
-interface AutomationBlueprint {
-  trigger: {
-    system: string;
-    event: string;
-    condition: string;
-  };
-  steps: AutomationStep[];
-  approvalRequired: boolean;
-  estimatedBuildTime: string;
-}
-
-interface AutomationStep {
-  order: number;
-  system: string;
-  action: string;
-  apiEndpoint?: string;
-  inputMapping: Record<string, string>;
-  outputMapping: Record<string, string>;
-  errorHandling: string;
-}
-```
-
-**Example Output:**
-
-```
-Workflow: "Bug Report → Jira Ticket" (detected 35x/month)
-
-BEFORE (Manual):
-  1. Developer posts bug in #engineering-bugs Slack channel
-  2. Lead reads message, copies details
-  3. Lead opens Jira, creates ticket manually
-  4. Lead assigns developer
-  5. Lead posts Jira link back in Slack thread
-  Total: ~12 min/occurrence → 7 hrs/month
-
-AFTER (Automated):
-  Trigger: New message in #engineering-bugs matching bug pattern
-  Step 1: Extract title, description, severity from message (AI)
-  Step 2: Create Jira ticket via API
-  Step 3: Auto-assign based on component ownership
-  Step 4: Reply in Slack thread with Jira link
-  Step 5: Add to current sprint if severity >= HIGH
-
-  ⚠️ Requires Approval: Manager approves ticket creation before execution
-  Estimated Build Time: 2–3 hours
-  Monthly Time Saved: 6.5 hours
-```
-
-### 4.6 — MCP Prompts
-
-| Prompt Name                     | Purpose                                                |
-| ------------------------------- | ------------------------------------------------------ |
-| `discover_automation`           | Find all automation opportunities across systems       |
-| `analyze_team_workflows`        | Deep-dive into a specific team's repetitive patterns   |
-| `build_automation_case`         | Generate a business case for automating a workflow     |
-| `weekly_efficiency_report`      | Weekly report on manual effort and automation potential |
+For the hackathon, **direct dependencies are sufficient**. Indirect is a bonus.
 
 ---
 
-## Phase 5 — Unified Dashboard (Widgets UI)
+## Phase 4 — Core MCP Tools (Detection & Traversal)
 
-> **Goal:** Build Next.js widget components that visualize investigation reports, risk dashboards, and workflow discovery results inside the NitroStack UI.
-> **Estimated Time:** 3–4 hours
+> **README Stages 4–5** · Estimated time: **1.5 hours**
 
-### 5.1 — Widget Architecture
+### 4.1 — Module Registration
 
-**Directory:** `src/widgets/app/`
+**File:** `src/modules/knowledge/knowledge.module.ts`
 
-```
-src/widgets/app/
-├── layout.tsx                          # Root layout with design system
-├── globals.css                         # Design tokens, theme, animations
-├── page.tsx                            # Widget router / landing
-│
-├── bottleneck-report/
-│   └── page.tsx                        # Full investigation report widget
-│
-├── risk-dashboard/
-│   └── page.tsx                        # Project risk heatmap + scores
-│
-├── workflow-discovery/
-│   └── page.tsx                        # Workflow patterns + ROI cards
-│
-├── signal-timeline/
-│   └── page.tsx                        # Cross-system event timeline
-│
-└── components/
-    ├── RiskGauge.tsx                    # Circular risk score indicator
-    ├── SignalCard.tsx                   # Individual signal display
-    ├── CorrelationGraph.tsx             # Signal relationship visualization
-    ├── WorkflowDiagram.tsx             # Before/After workflow visualization
-    ├── RecommendationList.tsx          # Prioritized action items
-    ├── TimelineView.tsx                # Cross-system event timeline
-    ├── AutomationROICard.tsx           # ROI summary for automation opportunity
-    └── MetricBadge.tsx                 # Risk dimension score badge
+```typescript
+import { Module } from '@nitrostack/core';
+import { KnowledgeTools } from './knowledge.tools.js';
+import { KnowledgeResources } from './knowledge.resources.js';
+import { KnowledgePrompts } from './knowledge.prompts.js';
+
+@Module({
+  name: 'knowledge-integrity',
+  description: 'Enterprise knowledge integrity — change detection, dependency traversal, conflict detection, risk scoring, remediation, and audit.',
+  controllers: [KnowledgeTools, KnowledgeResources, KnowledgePrompts]
+})
+export class KnowledgeIntegrityModule {}
 ```
 
-### 5.2 — Widget Manifest
+### 4.2 — Tool 1: `detect_source_changes`
 
-Update `widget-manifest.json` to register all widgets:
+**What it does:** Compares the current authoritative sources against the previous version and reports what facts changed.
+
+```typescript
+@Tool({
+  name: 'detect_source_changes',
+  description: 'Detect which authoritative facts have changed between the previous and current version of a source. This is the starting point of a knowledge integrity investigation.',
+  inputSchema: z.object({
+    source_id: z.string().optional()
+      .describe('Specific source ID to check. If omitted, checks ALL sources.')
+  })
+})
+async detectSourceChanges(input: any, ctx: ExecutionContext) {
+  // Compare authoritative_sources.json vs authoritative_sources_v1.json
+  // Return array of FactChange objects
+}
+```
+
+**Example output:**
 
 ```json
 {
-  "version": "1.0.0",
-  "widgets": [
+  "total_sources_checked": 6,
+  "sources_with_changes": 4,
+  "changes": [
     {
-      "uri": "/bottleneck-report",
-      "name": "Bottleneck Investigation Report",
-      "description": "Displays full investigation results with root causes, evidence, and recommendations",
-      "tags": ["investigation", "bottleneck", "report"]
+      "source_id": "discount-policy",
+      "source_title": "Enterprise Discount Policy",
+      "fact_key": "maximum_discount",
+      "old_value": "20%",
+      "new_value": "10%",
+      "changed": true
     },
     {
-      "uri": "/risk-dashboard",
-      "name": "Project Risk Dashboard",
-      "description": "Real-time risk heatmap across code review, tasks, builds, and dependencies",
-      "tags": ["risk", "dashboard", "health"]
-    },
-    {
-      "uri": "/workflow-discovery",
-      "name": "Workflow Discovery Results",
-      "description": "Discovered workflow patterns with automation ROI analysis",
-      "tags": ["workflow", "automation", "discovery"]
-    },
-    {
-      "uri": "/signal-timeline",
-      "name": "Cross-System Signal Timeline",
-      "description": "Timeline view of signals across GitHub, Jira, Slack, and CI/CD",
-      "tags": ["timeline", "signals", "activity"]
+      "source_id": "discount-policy",
+      "source_title": "Enterprise Discount Policy",
+      "fact_key": "approval_required_above",
+      "old_value": "10%",
+      "new_value": "5%",
+      "changed": true
     }
   ]
 }
 ```
 
-### 5.3 — Design System
+### 4.3 — Tool 2: `find_affected_knowledge`
 
-**Color Palette:**
+**What it does:** Given a source and fact that changed, traverses the dependency graph and returns every document/claim that depends on it.
 
-| Risk Level | Color       | Usage                  |
-| ---------- | ----------- | ---------------------- |
-| Critical   | `#FF4757`   | Critical risk elements |
-| High       | `#FF6B35`   | High risk elements     |
-| Medium     | `#FFA502`   | Medium risk warnings   |
-| Low        | `#2ED573`   | Healthy / low risk     |
-| Info       | `#5B8DEF`   | Informational          |
+```typescript
+@Tool({
+  name: 'find_affected_knowledge',
+  description: 'Traverse the knowledge dependency graph to find all documents and claims that depend on a specific authoritative fact. Returns both direct and indirect dependencies.',
+  inputSchema: z.object({
+    source_id: z.string().describe('The authoritative source ID'),
+    fact_key: z.string().describe('The specific fact key within the source')
+  })
+})
+async findAffectedKnowledge(input: any, ctx: ExecutionContext) {
+  // Query dependencies.json for matching source_id + fact_key
+  // Enrich with document details from documents.json
+  // Return list of affected documents with their claims
+}
+```
 
-**Widget Design Principles:**
-- Dark theme with glassmorphism cards
-- Smooth micro-animations on data load
-- Responsive grid layout
-- Color-coded risk severity throughout
-- Interactive hover states on all data points
+**Example output:**
 
-### 5.4 — Key Widget Behaviors
+```json
+{
+  "source_id": "discount-policy",
+  "fact_key": "maximum_discount",
+  "current_value": "10%",
+  "total_affected_documents": 4,
+  "total_affected_claims": 5,
+  "affected": [
+    {
+      "document_id": "sales-playbook",
+      "document_title": "Enterprise Sales Playbook",
+      "department": "Sales",
+      "criticality": "critical",
+      "customer_facing": true,
+      "affected_claims": [
+        {
+          "claim_id": "sales-playbook.claim-1",
+          "claim_text": "Sales can provide discounts up to 20%.",
+          "section": "Pricing Guidelines"
+        }
+      ]
+    }
+  ]
+}
+```
 
-**Bottleneck Report Widget:**
-- Receives `InvestigationReport` JSON from the `investigate_project` tool
-- Renders: Risk gauge → Root cause card → Evidence timeline → Recommendation list
-- Each evidence item links back to source (PR URL, Jira ticket URL, Slack message)
+### 4.4 — Service: `change-detection.service.ts`
 
-**Risk Dashboard Widget:**
-- Receives `RiskAssessment` JSON from `get_project_risk_score` tool
-- Renders: 5-dimension radar chart → individual dimension bars → trend indicators
-- Real-time color transitions based on score changes
+```typescript
+export class ChangeDetectionService {
+  constructor(private dataLoader: DataLoaderService) {}
 
-**Workflow Discovery Widget:**
-- Receives `AutomationOpportunity[]` from `get_automation_opportunities` tool
-- Renders: ROI ranking cards → Before/After workflow diagrams → Approval buttons
-- Sortable by ROI, frequency, or effort
+  detectChanges(sourceId?: string): {
+    total_sources_checked: number;
+    sources_with_changes: number;
+    changes: FactChange[];
+  };
+}
+```
 
----
-
-## Phase 6 — Integration Testing & Demo Preparation
-
-> **Goal:** End-to-end testing, demo data polishing, and presentation preparation.
-> **Estimated Time:** 2–3 hours
-
-### 6.1 — Integration Testing
-
-**Test Scenarios:**
-
-| # | Scenario                                     | Expected Result                                                          |
-|---|----------------------------------------------|--------------------------------------------------------------------------|
-| 1 | "Why is Project Phoenix delayed?"            | Full investigation report with root cause, evidence, recommendations      |
-| 2 | "Show me the risk dashboard for Phoenix"     | Risk gauge widget with 5-dimension breakdown                              |
-| 3 | "What are the top bottlenecks this sprint?"  | Ranked bottleneck list with severity and evidence                         |
-| 4 | "Find automation opportunities"              | List of discovered workflows with ROI analysis                           |
-| 5 | "Show me the workflow for bug reporting"     | Before/After workflow diagram with automation blueprint                   |
-| 6 | "Who is the most overloaded reviewer?"       | Team workload analysis with reviewer stats                                |
-| 7 | "Is our CI pipeline healthy?"                | Build health assessment with failure trends                               |
-
-### 6.2 — Demo Story (Pre-Seeded Scenario)
-
-**"Project Phoenix" Story Arc:**
-
-> Project Phoenix is a critical feature release that's 1 week behind schedule.
-> Nobody can explain why.
-
-**Act 1 — The Question:**
-Manager asks: *"Why is Project Phoenix delayed?"*
-
-**Act 2 — The Investigation:**
-AI collects signals from all 4 systems, correlates them, and discovers:
-- **Root Cause:** Alice (senior backend engineer) is the sole reviewer for 12 PRs
-- **Cascade Effect:** Review delays → 3 frontend tasks blocked → Sprint at risk
-- **Contributing Factor:** CI pipeline failing due to API contract change that Alice made
-- **Communication Signal:** 8 Slack messages in #phoenix-dev saying "waiting for Alice's review"
-
-**Act 3 — The Recommendation:**
-AI recommends:
-1. Immediately assign Bob as co-reviewer for backend PRs
-2. Prioritize PR #214 (API contract update) — it unblocks 5 downstream tasks
-3. Fix CI config to use updated API contract schema
-
-**Act 4 — The Automation Discovery:**
-AI also discovers:
-- The "bug triage" workflow happens 35x/month and takes 12 min each time
-- Sprint reporting is done manually every Monday (25 hrs/month wasted)
-- Post-deployment verification follows the same 7-step checklist every time
-
-**Act 5 — The Resolution:**
-Manager approves automation for sprint reporting → estimated savings: 20 hrs/month
-
-### 6.3 — Demo Polish Checklist
-
-- [ ] Mock data produces compelling, realistic investigation results
-- [ ] All 4 widgets render correctly with mock data
-- [ ] Prompt templates produce well-structured outputs
-- [ ] Tool descriptions are clear and discoverable
-- [ ] Error handling works gracefully when a connector fails
-- [ ] Health check passes for all services
-- [ ] README updated with project description and setup instructions
+**Logic:** For each source in `authoritative_sources.json`, find the matching source in `authoritative_sources_v1.json`. Compare every fact key/value pair. Report differences.
 
 ---
 
-## File/Module Map
+## Phase 5 — Validation & Conflict Tools
+
+> **README Stages 6–7** · Estimated time: **1.5 hours**
+
+### 5.1 — Tool 3: `validate_claim`
+
+**What it does:** Checks whether a specific claim is still consistent with the authoritative fact it depends on. Returns `VALID`, `CONFLICT`, or `AMBIGUOUS`.
+
+```typescript
+@Tool({
+  name: 'validate_claim',
+  description: 'Validate whether a specific claim in a document is still consistent with its authoritative source. Returns VALID, CONFLICT, or AMBIGUOUS.',
+  inputSchema: z.object({
+    document_id: z.string().describe('The document containing the claim'),
+    claim_id: z.string().describe('The specific claim ID to validate')
+  })
+})
+```
+
+**Validation logic (deterministic in service, semantic reasoning by LLM):**
+
+The service does **keyword/value matching**:
+
+| Claim Text | Authoritative Value | Result |
+|-----------|-------------------|--------|
+| Contains "20%" | Authoritative says "10%" | `CONFLICT` |
+| Contains "10%" | Authoritative says "10%" | `VALID` |
+| Contains "current policy" or "as per policy" | Any value | `AMBIGUOUS` |
+| No explicit value | Any value | `AMBIGUOUS` |
+
+The LLM calling the tool can do **deeper semantic reasoning** on the results.
+
+### 5.2 — Tool 4: `detect_knowledge_conflicts`
+
+**What it does:** Compares ALL claims connected to the same authoritative fact and reports which ones conflict, which are valid, and which are ambiguous.
+
+```typescript
+@Tool({
+  name: 'detect_knowledge_conflicts',
+  description: 'Find all knowledge contradictions across enterprise documents for a given authoritative fact. Compares every claim that depends on the fact and reports conflicts.',
+  inputSchema: z.object({
+    source_id: z.string().describe('The authoritative source ID'),
+    fact_key: z.string().describe('The specific fact key to check conflicts for')
+  })
+})
+```
+
+**Example output:**
+
+```json
+{
+  "source_id": "discount-policy",
+  "fact_key": "maximum_discount",
+  "authoritative_value": "10%",
+  "total_claims_checked": 6,
+  "conflicts": 3,
+  "valid": 2,
+  "ambiguous": 1,
+  "results": [
+    {
+      "document_id": "sales-playbook",
+      "document_title": "Enterprise Sales Playbook",
+      "claim_text": "Sales can provide discounts up to 20%.",
+      "status": "CONFLICT",
+      "explanation": "Claim states 20% but authoritative value is 10%"
+    },
+    {
+      "document_id": "pricing-guide",
+      "document_title": "Internal Pricing Guide",
+      "claim_text": "Maximum discount is capped at 10%.",
+      "status": "VALID",
+      "explanation": "Claim matches authoritative value of 10%"
+    },
+    {
+      "document_id": "quarterly-review-deck",
+      "document_title": "Quarterly Business Review Deck",
+      "claim_text": "Discounts follow the current Enterprise Discount Policy.",
+      "status": "AMBIGUOUS",
+      "explanation": "References policy generically without specifying a value"
+    }
+  ]
+}
+```
+
+### 5.3 — Service: `validation.service.ts`
+
+```typescript
+export class ValidationService {
+  constructor(private dataLoader: DataLoaderService) {}
+
+  validateClaim(documentId: string, claimId: string): ClaimValidation;
+  validateAllClaimsForFact(sourceId: string, factKey: string): ClaimValidation[];
+}
+```
+
+**Matching algorithm (claim text → authoritative value):**
+
+```typescript
+function determineStatus(claimText: string, authValue: string): ValidationStatus {
+  const normalizedClaim = claimText.toLowerCase();
+  const normalizedValue = authValue.toLowerCase();
+
+  // Check for explicit value conflict
+  // Extract numbers/percentages/values from claim text
+  // Compare against authoritative value
+
+  // If claim contains a specific value different from authoritative → CONFLICT
+  // If claim contains the exact authoritative value → VALID
+  // If claim references "current policy" / "as per" / no specific value → AMBIGUOUS
+}
+```
+
+### 5.4 — Service: `conflict.service.ts`
+
+```typescript
+export class ConflictService {
+  constructor(
+    private dataLoader: DataLoaderService,
+    private dependencyService: DependencyService,
+    private validationService: ValidationService
+  ) {}
+
+  detectConflicts(sourceId: string, factKey: string): ConflictReport;
+}
+```
+
+---
+
+## Phase 6 — Provenance & Risk Tools
+
+> **README Stages 8–9** · Estimated time: **1.5 hours**
+
+### 6.1 — Tool 5: `trace_knowledge_provenance`
+
+**What it does:** Given a claim, traces back to where the knowledge originated, through which source versions, showing whether the claim is based on current or superseded information.
+
+```typescript
+@Tool({
+  name: 'trace_knowledge_provenance',
+  description: 'Trace the origin of a specific claim. Shows which authoritative source it depends on, the version history of that source, and whether the claim is based on current or outdated information.',
+  inputSchema: z.object({
+    document_id: z.string().describe('The document containing the claim'),
+    claim_id: z.string().describe('The specific claim to trace')
+  })
+})
+```
+
+**Example output:**
+
+```json
+{
+  "claim": {
+    "document_id": "sales-playbook",
+    "document_title": "Enterprise Sales Playbook",
+    "claim_text": "Sales can provide discounts up to 20%."
+  },
+  "depends_on_fact": "discount-policy.maximum_discount",
+  "source_history": [
+    {
+      "source_id": "discount-policy",
+      "source_title": "Enterprise Discount Policy",
+      "version": "1.0",
+      "value": "20%",
+      "status": "superseded"
+    },
+    {
+      "source_id": "discount-policy",
+      "source_title": "Enterprise Discount Policy",
+      "version": "2.0",
+      "value": "10%",
+      "status": "current"
+    }
+  ],
+  "is_current": false,
+  "conclusion": "This claim references the superseded value (20%) from version 1.0. The current authoritative value is 10% (version 2.0)."
+}
+```
+
+### 6.2 — Tool 6: `assess_knowledge_risk`
+
+**What it does:** Computes a deterministic risk score for a conflicting claim based on multiple weighted factors. The MCP server calculates the score — the LLM explains it.
+
+```typescript
+@Tool({
+  name: 'assess_knowledge_risk',
+  description: 'Assess the risk level of a knowledge conflict. Uses deterministic scoring based on customer-facing impact, financial impact, compliance impact, and document criticality. The server calculates the score — the LLM should explain it.',
+  inputSchema: z.object({
+    document_id: z.string().describe('The document with the conflict'),
+    claim_id: z.string().describe('The conflicting claim')
+  })
+})
+```
+
+### 6.3 — Service: `risk.service.ts`
+
+**Deterministic scoring formula:**
+
+```typescript
+function calculateRiskScore(factors: RiskFactors): number {
+  let score = 0;
+
+  if (factors.confirmed_conflict)   score += 30;  // Confirmed contradiction
+  if (factors.customer_facing)      score += 25;  // Visible to customers
+  if (factors.financial_impact)     score += 20;  // Could cost money
+  if (factors.compliance_impact)    score += 15;  // Regulatory risk
+
+  // Document criticality multiplier
+  switch (factors.document_criticality) {
+    case 'critical': score += 10; break;
+    case 'high':     score += 5;  break;
+    case 'medium':   score += 2;  break;
+    case 'low':      score += 0;  break;
+  }
+
+  return Math.min(score, 100);
+}
+
+function riskLevel(score: number): string {
+  if (score >= 80) return 'CRITICAL';
+  if (score >= 60) return 'HIGH';
+  if (score >= 40) return 'MEDIUM';
+  return 'LOW';
+}
+```
+
+**Factor detection:**
+
+| Factor | How It's Determined |
+|--------|-------------------|
+| `customer_facing` | From `document.customer_facing` field |
+| `financial_impact` | Fact relates to pricing, discounts, expenses, budgets |
+| `compliance_impact` | Fact relates to data retention, security, legal policies |
+| `operational_impact` | Fact relates to processes, workflows, approvals |
+| `confirmed_conflict` | `validate_claim` returned `CONFLICT` |
+| `document_criticality` | From `document.criticality` field |
+
+---
+
+## Phase 7 — Remediation & Audit Tools
+
+> **README Stages 10–11** · Estimated time: **1.5 hours**
+
+### 7.1 — Tool 7: `propose_knowledge_update`
+
+**What it does:** Generates a remediation proposal for a conflicting claim. Does NOT modify anything — just creates a proposal with status `AWAITING_APPROVAL`.
+
+```typescript
+@Tool({
+  name: 'propose_knowledge_update',
+  description: 'Generate a remediation proposal to fix a knowledge conflict. Creates a pending update with status AWAITING_APPROVAL. The update is NOT applied until explicitly approved via approve_knowledge_update.',
+  inputSchema: z.object({
+    document_id: z.string().describe('The document to update'),
+    claim_id: z.string().describe('The conflicting claim to fix'),
+    suggested_text: z.string().optional()
+      .describe('Optional: custom replacement text. If omitted, auto-generates based on authoritative value.')
+  })
+})
+```
+
+**Example output:**
+
+```json
+{
+  "proposal_id": "upd-001",
+  "document_id": "sales-playbook",
+  "document_title": "Enterprise Sales Playbook",
+  "claim_id": "sales-playbook.claim-1",
+  "current_text": "Sales can provide discounts up to 20%.",
+  "suggested_text": "Sales can provide discounts up to 10%.",
+  "authoritative_source": "discount-policy",
+  "authoritative_fact": "maximum_discount",
+  "authoritative_value": "10%",
+  "risk_level": "CRITICAL",
+  "status": "AWAITING_APPROVAL"
+}
+```
+
+**Storage:** Written to `src/data/pending_updates.json`.
+
+### 7.2 — Tool 8: `approve_knowledge_update`
+
+**What it does:** Approves a pending update and applies it to the knowledge base. This is the **only tool that modifies documents**. It also writes to the audit log.
+
+```typescript
+@Tool({
+  name: 'approve_knowledge_update',
+  description: 'Approve and apply a pending knowledge update. This is the ONLY tool that modifies the knowledge base. Requires a valid proposal_id from propose_knowledge_update. Records the change in the audit log.',
+  inputSchema: z.object({
+    proposal_id: z.string().describe('The proposal ID to approve (from propose_knowledge_update)'),
+    reason: z.string().optional()
+      .describe('Optional: reason for approval')
+  })
+})
+```
+
+**What happens on approval:**
+1. Find proposal in `pending_updates.json`
+2. Update status to `APPROVED`
+3. Modify the claim text in `documents.json`
+4. Write an entry to `audit_log.json`
+5. Return confirmation with audit entry
+
+### 7.3 — Tool 9: `get_audit_log`
+
+**What it does:** Returns the history of all approved changes.
+
+```typescript
+@Tool({
+  name: 'get_audit_log',
+  description: 'Retrieve the audit log of all knowledge updates that have been proposed, approved, and applied. Shows complete remediation history.',
+  inputSchema: z.object({
+    document_id: z.string().optional()
+      .describe('Optional: filter by document ID'),
+    limit: z.number().optional()
+      .describe('Optional: max number of entries to return (default: 50)')
+  })
+})
+```
+
+### 7.4 — Services
+
+**`src/services/remediation.service.ts`:**
+
+```typescript
+export class RemediationService {
+  proposeUpdate(documentId: string, claimId: string, suggestedText?: string): ProposedUpdate;
+  approveUpdate(proposalId: string, reason?: string): { update: ProposedUpdate; audit: AuditEntry };
+  rejectUpdate(proposalId: string, reason?: string): ProposedUpdate;
+  getPendingUpdates(): ProposedUpdate[];
+}
+```
+
+**`src/services/audit.service.ts`:**
+
+```typescript
+export class AuditService {
+  recordEntry(entry: Omit<AuditEntry, 'id' | 'timestamp'>): AuditEntry;
+  getLog(filter?: { documentId?: string; limit?: number }): AuditEntry[];
+}
+```
+
+---
+
+## Phase 8 — High-Level Investigation Tool
+
+> **README Stage 12** · Estimated time: **45 minutes**
+
+### 8.1 — Optional: `investigate_knowledge_change`
+
+A single high-level tool that runs the entire pipeline and returns a complete investigation report. This is **optional** — the README notes that letting the LLM orchestrate the individual tools is actually more impressive for the demo.
+
+```typescript
+@Tool({
+  name: 'investigate_knowledge_change',
+  description: 'Run a complete knowledge integrity investigation. Detects all source changes, traces dependencies, validates claims, finds conflicts, assesses risk, and proposes remediations. Returns a comprehensive report.',
+  inputSchema: z.object({
+    source_id: z.string().optional()
+      .describe('Optional: investigate a specific source. If omitted, investigates ALL changed sources.')
+  })
+})
+```
+
+**Output structure:**
+
+```json
+{
+  "investigation_summary": {
+    "sources_checked": 6,
+    "changes_detected": 7,
+    "documents_affected": 12,
+    "conflicts_found": 8,
+    "critical_risks": 3,
+    "remediations_proposed": 8
+  },
+  "changes": [ ... ],
+  "conflicts": [ ... ],
+  "risk_assessments": [ ... ],
+  "proposed_remediations": [ ... ]
+}
+```
+
+### 8.2 — MCP Resources
+
+**File:** `src/modules/knowledge/knowledge.resources.ts`
+
+Expose the knowledge base as MCP resources the LLM can browse:
+
+```typescript
+@Resource({
+  uri: 'knowledge://sources',
+  name: 'Authoritative Sources',
+  description: 'Current authoritative enterprise sources and their facts',
+  mimeType: 'application/json'
+})
+
+@Resource({
+  uri: 'knowledge://documents',
+  name: 'Enterprise Documents',
+  description: 'All enterprise documents with their claims and dependencies',
+  mimeType: 'application/json'
+})
+
+@Resource({
+  uri: 'knowledge://pending-updates',
+  name: 'Pending Updates',
+  description: 'Knowledge update proposals awaiting approval',
+  mimeType: 'application/json'
+})
+```
+
+### 8.3 — MCP Prompts
+
+**File:** `src/modules/knowledge/knowledge.prompts.ts`
+
+```typescript
+@Prompt({
+  name: 'investigate_policy_change',
+  description: 'Investigate the impact of a policy change on enterprise knowledge',
+  arguments: [
+    { name: 'policy', description: 'The policy or source that changed', required: false }
+  ]
+})
+// Returns conversation template guiding the LLM to use the tools in sequence
+
+@Prompt({
+  name: 'knowledge_health_check',
+  description: 'Run a full health check on enterprise knowledge consistency',
+  arguments: []
+})
+// Returns template for comprehensive knowledge audit
+```
+
+---
+
+## Phase 9 — MCP Client Connection & Demo
+
+> **README Stage 13** · Estimated time: **1 hour**
+
+### 9.1 — Test with NitroStudio
+
+1. Run `npm run dev`
+2. Open NitroStudio (the recommended client from the template README)
+3. Verify all 9 tools appear in the tools list
+4. Test each tool individually with sample inputs
+
+### 9.2 — Test with Claude Desktop (if available)
+
+Add to Claude Desktop's MCP config:
+
+```json
+{
+  "mcpServers": {
+    "knowledge-integrity": {
+      "command": "node",
+      "args": ["dist/index.js"],
+      "cwd": "/path/to/my-mcp-server"
+    }
+  }
+}
+```
+
+### 9.3 — Demo Flow
+
+**The user says:**
+
+> "Has any important company knowledge become invalid after the latest policy changes?"
+
+**The LLM should chain these calls:**
+
+```
+detect_source_changes()
+        ↓                    "4 sources changed, 7 fact changes detected"
+find_affected_knowledge()
+        ↓                    "12 documents affected, 15 claims to check"
+detect_knowledge_conflicts()
+        ↓                    "8 conflicts, 5 valid, 2 ambiguous"
+assess_knowledge_risk()
+        ↓                    "3 CRITICAL, 3 HIGH, 2 MEDIUM"
+trace_knowledge_provenance()
+        ↓                    "Claims trace to superseded policy v1"
+```
+
+**LLM responds:**
+
+> "The Enterprise Discount Policy changed from 20% to 10%. I found 4 dependent documents. 3 contain confirmed contradictions. The Sales Proposal Template is CRITICAL because it is customer-facing and financially sensitive."
+
+**User says:** "Fix the critical ones."
+
+```
+propose_knowledge_update()   × 3 (one per critical conflict)
+        ↓                    "3 proposals created, AWAITING_APPROVAL"
+```
+
+**LLM responds:**
+
+> "I've proposed 3 updates. Here they are for your review: [list]. Shall I apply them?"
+
+**User says:** "Yes, approve them."
+
+```
+approve_knowledge_update()   × 3
+        ↓                    "3 updates applied, audit entries recorded"
+get_audit_log()
+        ↓                    "Shows complete change history"
+```
+
+### 9.4 — Verification Checklist
+
+- [ ] `npm run dev` starts without errors
+- [ ] All 9 tools are discoverable via MCP
+- [ ] `detect_source_changes()` returns 7 fact changes across 4 sources
+- [ ] `find_affected_knowledge("discount-policy", "maximum_discount")` returns 4+ documents
+- [ ] `validate_claim()` correctly returns VALID, CONFLICT, or AMBIGUOUS
+- [ ] `detect_knowledge_conflicts()` shows correct per-claim breakdown
+- [ ] `trace_knowledge_provenance()` shows v1 → v2 version chain
+- [ ] `assess_knowledge_risk()` returns deterministic scores (not AI-hallucinated)
+- [ ] `propose_knowledge_update()` creates entry in `pending_updates.json`
+- [ ] `approve_knowledge_update()` modifies `documents.json` and writes to `audit_log.json`
+- [ ] `get_audit_log()` shows complete history
+- [ ] Full demo flow works end-to-end via MCP client
+- [ ] Health check passes
+
+---
+
+## File Map
 
 ```
 src/
-├── index.ts                              # Entry point (no changes needed)
-├── app.module.ts                         # Root module (update imports)
-│
-├── shared/
-│   ├── types/
-│   │   ├── github.types.ts
-│   │   ├── jira.types.ts
-│   │   ├── slack.types.ts
-│   │   ├── cicd.types.ts
-│   │   ├── investigation.types.ts
-│   │   └── workflow.types.ts
-│   ├── schemas/
-│   │   └── index.ts
-│   ├── constants.ts
-│   ├── utils/
-│   │   ├── date.utils.ts
-│   │   ├── scoring.utils.ts
-│   │   └── correlation.utils.ts
-│   └── mock/
-│       ├── mock-data.provider.ts
-│       ├── github.mock.ts
-│       ├── jira.mock.ts
-│       ├── slack.mock.ts
-│       └── cicd.mock.ts
-│
-├── engine/
-│   ├── signal-collector.ts
-│   ├── signal-correlator.ts
-│   ├── risk-scorer.ts
-│   └── recommendation-engine.ts
-│
-├── modules/
-│   ├── github/
-│   │   ├── github.module.ts
-│   │   ├── github.service.ts
-│   │   ├── github.tools.ts
-│   │   ├── github.resources.ts
-│   │   └── github.prompts.ts
-│   │
-│   ├── jira/
-│   │   ├── jira.module.ts
-│   │   ├── jira.service.ts
-│   │   ├── jira.tools.ts
-│   │   ├── jira.resources.ts
-│   │   └── jira.prompts.ts
-│   │
-│   ├── slack/
-│   │   ├── slack.module.ts
-│   │   ├── slack.service.ts
-│   │   ├── slack.tools.ts
-│   │   ├── slack.resources.ts
-│   │   └── slack.prompts.ts
-│   │
-│   ├── cicd/
-│   │   ├── cicd.module.ts
-│   │   ├── cicd.service.ts
-│   │   ├── cicd.tools.ts
-│   │   ├── cicd.resources.ts
-│   │   └── cicd.prompts.ts
-│   │
-│   ├── investigator/
-│   │   ├── investigator.module.ts
-│   │   ├── investigator.service.ts
-│   │   ├── investigator.tools.ts
-│   │   ├── investigator.prompts.ts
-│   │   └── investigator.resources.ts
-│   │
-│   └── workflow-discovery/
-│       ├── workflow-discovery.module.ts
-│       ├── workflow-discovery.service.ts
-│       ├── workflow-discovery.tools.ts
-│       ├── workflow-discovery.prompts.ts
-│       ├── workflow-discovery.resources.ts
-│       ├── pattern-detector.ts
-│       └── automation-scorer.ts
+├── index.ts                                    # KEEP — no changes
+├── app.module.ts                               # MODIFY — swap calculator → knowledge
 │
 ├── health/
-│   └── system.health.ts                   # Keep existing (no changes)
+│   └── system.health.ts                        # KEEP — no changes
 │
-└── widgets/
-    ├── app/
-    │   ├── layout.tsx
-    │   ├── globals.css
-    │   ├── page.tsx
-    │   ├── bottleneck-report/page.tsx
-    │   ├── risk-dashboard/page.tsx
-    │   ├── workflow-discovery/page.tsx
-    │   ├── signal-timeline/page.tsx
-    │   └── components/
-    │       ├── RiskGauge.tsx
-    │       ├── SignalCard.tsx
-    │       ├── CorrelationGraph.tsx
-    │       ├── WorkflowDiagram.tsx
-    │       ├── RecommendationList.tsx
-    │       ├── TimelineView.tsx
-    │       ├── AutomationROICard.tsx
-    │       └── MetricBadge.tsx
-    ├── widget-manifest.json
-    ├── package.json
-    └── tsconfig.json
+├── types/
+│   └── index.ts                                # NEW — all TypeScript interfaces
+│
+├── data/
+│   ├── authoritative_sources.json              # NEW — current truth (v2)
+│   ├── authoritative_sources_v1.json           # NEW — previous truth (v1)
+│   ├── documents.json                          # NEW — 20+ enterprise documents
+│   ├── dependencies.json                       # NEW — fact → claim graph
+│   ├── pending_updates.json                    # NEW — starts as []
+│   └── audit_log.json                          # NEW — starts as []
+│
+├── services/
+│   ├── data-loader.service.ts                  # NEW — JSON read/write
+│   ├── change-detection.service.ts             # NEW — v1 vs v2 comparison
+│   ├── dependency.service.ts                   # NEW — graph traversal
+│   ├── validation.service.ts                   # NEW — claim validation
+│   ├── conflict.service.ts                     # NEW — cross-doc contradiction detection
+│   ├── provenance.service.ts                   # NEW — knowledge origin tracing
+│   ├── risk.service.ts                         # NEW — deterministic risk scoring
+│   ├── remediation.service.ts                  # NEW — propose/approve updates
+│   └── audit.service.ts                        # NEW — change history recording
+│
+├── modules/
+│   └── knowledge/
+│       ├── knowledge.module.ts                 # NEW — module registration
+│       ├── knowledge.tools.ts                  # NEW — all 9 MCP tools
+│       ├── knowledge.resources.ts              # NEW — 3 MCP resources
+│       └── knowledge.prompts.ts                # NEW — 2 MCP prompts
+│
+└── widgets/                                    # KEEP — optional, not in scope for MVP
 ```
 
-**Total Files to Create:** ~50 files
-**Total Files to Modify:** ~3 files (app.module.ts, widget-manifest.json, .env.example)
-**Total Files to Delete:** ~4 files (calculator module)
+**New files to create:** 22
+**Files to modify:** 1 (`app.module.ts`)
+**Files to delete:** 4 (calculator module)
 
 ---
 
-## Risk Mitigation
+## Complete Tool Reference
 
-| Risk                                     | Mitigation                                                                  |
-| ---------------------------------------- | --------------------------------------------------------------------------- |
-| API rate limits from GitHub/Jira/Slack   | Mock data layer serves as primary demo mode; real APIs are optional          |
-| NitroStack decorator API unfamiliarity   | Follow existing calculator module patterns exactly for all new modules       |
-| Time pressure (hackathon)                | Mock data is Phase 1 priority — everything can demo with mocks alone         |
-| Widget rendering issues                  | Start with simple JSON display, progressively enhance with rich components   |
-| Cross-system correlation complexity      | Start with entity-matching only, add temporal/causal in polish phase         |
+| # | MCP Tool | Input | Output | Phase |
+|---|----------|-------|--------|-------|
+| 1 | `detect_source_changes` | `source_id?` | Changed facts with old/new values | Phase 4 |
+| 2 | `find_affected_knowledge` | `source_id`, `fact_key` | Documents & claims that depend on the fact | Phase 4 |
+| 3 | `validate_claim` | `document_id`, `claim_id` | VALID / CONFLICT / AMBIGUOUS | Phase 5 |
+| 4 | `detect_knowledge_conflicts` | `source_id`, `fact_key` | All claims compared, grouped by status | Phase 5 |
+| 5 | `trace_knowledge_provenance` | `document_id`, `claim_id` | Source version history, current vs superseded | Phase 6 |
+| 6 | `assess_knowledge_risk` | `document_id`, `claim_id` | Risk score (0–100), level, reasons | Phase 6 |
+| 7 | `propose_knowledge_update` | `document_id`, `claim_id`, `suggested_text?` | Proposal with AWAITING_APPROVAL status | Phase 7 |
+| 8 | `approve_knowledge_update` | `proposal_id`, `reason?` | Applied update + audit entry | Phase 7 |
+| 9 | `get_audit_log` | `document_id?`, `limit?` | Change history entries | Phase 7 |
+
+**Optional:**
+
+| # | MCP Tool | Input | Output | Phase |
+|---|----------|-------|--------|-------|
+| 10 | `investigate_knowledge_change` | `source_id?` | Full pipeline report | Phase 8 |
 
 ---
 
 ## Demo Script
 
-### Slide 1: The Problem (30 seconds)
-> "Every engineering manager has asked: *Why is this project delayed?* Today they spend hours manually checking Jira, GitHub, Slack, and CI/CD to piece together an answer."
+### Opening (30 seconds)
 
-### Slide 2: Our Solution (30 seconds)
-> "We built an MCP-powered intelligence layer that sits on top of your existing tools and answers that question in seconds."
+> "Enterprise knowledge becomes outdated the moment a policy changes. Sales teams quote wrong discounts. Training materials teach wrong processes. Compliance docs reference old rules. Nobody knows until something breaks."
 
-### Live Demo: Investigation (2 minutes)
-> User asks: "Why is Project Phoenix delayed?"
-> → Show investigation running across all 4 systems
-> → Display bottleneck report widget with root cause
-> → Highlight the causal chain visualization
+### Problem Statement (30 seconds)
 
-### Live Demo: Workflow Discovery (1 minute)
-> User asks: "Find automation opportunities"
-> → Show discovered workflows with ROI
-> → Display before/after automation blueprint
-> → Show approval workflow
+> "When the Enterprise Discount Policy changed from 20% to 10%, how many documents across the company still say 20%? Today, nobody knows. It takes weeks of manual auditing — if it happens at all."
 
-### Slide 3: Impact (30 seconds)
-> "Diagnosis + Treatment. We don't just find what's wrong — we show how to fix it and automate the fix."
+### Live Demo (3–4 minutes)
+
+**Step 1:** *"Let's find what changed."*
+→ `detect_source_changes()` — shows 7 fact changes across 4 policies
+
+**Step 2:** *"What depends on the discount policy?"*
+→ `find_affected_knowledge("discount-policy", "maximum_discount")` — shows 4 affected documents
+
+**Step 3:** *"Are they still accurate?"*
+→ `detect_knowledge_conflicts("discount-policy", "maximum_discount")` — shows 3 conflicts, 2 valid, 1 ambiguous
+
+**Step 4:** *"How dangerous is this?"*
+→ `assess_knowledge_risk("sales-playbook", "sales-playbook.claim-1")` — CRITICAL: customer-facing, financial impact, confirmed conflict
+
+**Step 5:** *"Where did this bad info come from?"*
+→ `trace_knowledge_provenance("sales-playbook", "sales-playbook.claim-1")` — traces to Policy v1, superseded by v2
+
+**Step 6:** *"Fix the critical ones."*
+→ `propose_knowledge_update()` × 3 — proposals created, AWAITING_APPROVAL
+→ `approve_knowledge_update()` × 3 — updates applied
+
+**Step 7:** *"Show me the audit trail."*
+→ `get_audit_log()` — complete change history with timestamps
+
+### Closing (30 seconds)
+
+> "Something changed → what depends on it → what is now wrong → why it's dangerous → what should change → approve → fix → record. That's the complete enterprise knowledge integrity loop, powered by MCP."
 
 ---
 
-> **Total Estimated Implementation Time: 16–23 hours**
-> **Recommended Team Split (if 2-3 people):**
-> - Person A: Phase 0 + Phase 1 (Connectors + Mock Data)
-> - Person B: Phase 2 + Phase 3 (Engine + Investigator)
-> - Person C: Phase 4 + Phase 5 (Workflow Discovery + Widgets)
-> - All: Phase 6 (Integration + Demo)
+## Estimated Timeline
+
+| Phase | Task | Time |
+|-------|------|------|
+| **Phase 1** | Scaffolding — delete calculator, set up dirs, update app module | 30 min |
+| **Phase 2** | Synthetic data — types, 6 JSON files, 20+ documents | 1–1.5 hrs |
+| **Phase 3** | Data loader + dependency service | 45 min |
+| **Phase 4** | Tools 1–2: detect changes, find affected | 1.5 hrs |
+| **Phase 5** | Tools 3–4: validate claims, detect conflicts | 1.5 hrs |
+| **Phase 6** | Tools 5–6: provenance, risk scoring | 1.5 hrs |
+| **Phase 7** | Tools 7–9: propose, approve, audit | 1.5 hrs |
+| **Phase 8** | High-level investigation tool + resources + prompts | 45 min |
+| **Phase 9** | Client connection, testing, demo prep | 1 hr |
+| **Total** | | **~10 hours** |
+
+> **Key principle:** No external APIs. No databases. No frontend. Just a clean MCP server with synthetic JSON data that any LLM can connect to and reason over. The entire demo proves the MCP concept through visible tool orchestration.

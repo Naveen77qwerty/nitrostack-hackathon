@@ -1,8 +1,11 @@
 /**
- * Calculator MCP Server
+ * Enterprise Knowledge Integrity MCP Server
  * 
  * Main entry point for the MCP server.
  * Uses the @McpApp decorator pattern for clean, NestJS-style architecture.
+ * 
+ * Detects authoritative knowledge changes, traces dependencies,
+ * finds contradictions, assesses risk, and proposes remediation.
  * 
  * Transport Configuration:
  * - Development (NODE_ENV=development): STDIO only

@@ -5,9 +5,11 @@ import { ValidationService } from '../../services/validation.service.js';
 import { ConflictService } from '../../services/conflict.service.js';
 import { ProvenanceService } from '../../services/provenance.service.js';
 import { RiskService } from '../../services/risk.service.js';
+import { RemediationService } from '../../services/remediation.service.js';
+import { AuditService } from '../../services/audit.service.js';
 
 // ---------------------------------------------------------------------------
-// KnowledgeTools — MCP tool controller (Phases 4–6)
+// KnowledgeTools — MCP tool controller (Phases 4–7)
 // ---------------------------------------------------------------------------
 // Exposes the Phase 4 change/dependency tools and Phase 5 validation/conflict
 // tools. Later phases extend this controller with additional capabilities.
@@ -21,6 +23,8 @@ import { RiskService } from '../../services/risk.service.js';
     ConflictService,
     ProvenanceService,
     RiskService,
+    RemediationService,
+    AuditService,
   ],
 })
 export class KnowledgeTools {
@@ -31,6 +35,8 @@ export class KnowledgeTools {
     private readonly conflictService: ConflictService,
     private readonly provenanceService: ProvenanceService,
     private readonly riskService: RiskService,
+    private readonly remediationService: RemediationService,
+    private readonly auditService: AuditService,
   ) {}
 
   // ── Tool 1: detect_source_changes ───────────────────────────────────────
@@ -234,5 +240,100 @@ export class KnowledgeTools {
   ) {
     ctx.logger.info('Running assess_knowledge_risk', input);
     return this.riskService.assessRisk(input.document_id, input.claim_id);
+  }
+
+  // ── Tool 7: propose_knowledge_update ────────────────────────────────────
+
+  @Tool({
+    name: 'propose_knowledge_update',
+    description:
+      'Generate a remediation proposal to fix a knowledge conflict. Creates a pending update with status AWAITING_APPROVAL. The update is NOT applied until explicitly approved via approve_knowledge_update.',
+    inputSchema: z.object({
+      document_id: z.string().min(1).describe('The document to update'),
+      claim_id: z.string().min(1).describe('The conflicting claim to fix'),
+      suggested_text: z.string().min(1).optional().describe('Optional custom replacement text'),
+    }),
+    annotations: {
+      readOnlyHint: false,
+      openWorldHint: false,
+    },
+    invocation: {
+      invoking: 'Preparing a knowledge update proposal…',
+      invoked: 'Knowledge update proposal created and awaiting approval.',
+    },
+  })
+  async proposeKnowledgeUpdate(
+    input: { document_id: string; claim_id: string; suggested_text?: string },
+    ctx: ExecutionContext,
+  ) {
+    ctx.logger.info('Running propose_knowledge_update', {
+      document_id: input.document_id,
+      claim_id: input.claim_id,
+    });
+    const proposal = this.remediationService.proposeUpdate(
+      input.document_id,
+      input.claim_id,
+      input.suggested_text,
+    );
+    return { proposal_id: proposal.id, ...proposal };
+  }
+
+  // ── Tool 8: approve_knowledge_update ────────────────────────────────────
+
+  @Tool({
+    name: 'approve_knowledge_update',
+    description:
+      'Approve and apply a pending knowledge update. This is the ONLY tool that modifies the knowledge base. Requires a valid proposal_id from propose_knowledge_update. Records the change in the audit log.',
+    inputSchema: z.object({
+      proposal_id: z.string().min(1).describe('The proposal ID to approve'),
+      reason: z.string().optional().describe('Optional reason for approval'),
+    }),
+    annotations: {
+      readOnlyHint: false,
+      openWorldHint: false,
+    },
+    invocation: {
+      invoking: 'Applying approved knowledge update…',
+      invoked: 'Knowledge update applied and audited.',
+    },
+  })
+  async approveKnowledgeUpdate(
+    input: { proposal_id: string; reason?: string },
+    ctx: ExecutionContext,
+  ) {
+    ctx.logger.info('Running approve_knowledge_update', {
+      proposal_id: input.proposal_id,
+    });
+    return this.remediationService.approveUpdate(input.proposal_id, input.reason);
+  }
+
+  // ── Tool 9: get_audit_log ─────────────────────────────────────────────────
+
+  @Tool({
+    name: 'get_audit_log',
+    description:
+      'Retrieve the history of all approved changes and remediation decisions. Shows complete remediation history.',
+    inputSchema: z.object({
+      document_id: z.string().min(1).optional().describe('Optional document filter'),
+      limit: z.number().int().min(0).optional().describe('Optional maximum number of entries, default 50'),
+    }),
+    annotations: {
+      readOnlyHint: true,
+      openWorldHint: false,
+    },
+    invocation: {
+      invoking: 'Retrieving knowledge audit history…',
+      invoked: 'Knowledge audit history retrieved.',
+    },
+  })
+  async getAuditLog(
+    input: { document_id?: string; limit?: number },
+    ctx: ExecutionContext,
+  ) {
+    ctx.logger.info('Running get_audit_log', input);
+    return this.auditService.getLog({
+      documentId: input.document_id,
+      limit: input.limit,
+    });
   }
 }

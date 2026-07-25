@@ -9,6 +9,8 @@ import { ValidationService } from '../../services/validation.service.js';
 import { ConflictService } from '../../services/conflict.service.js';
 import { ProvenanceService } from '../../services/provenance.service.js';
 import { RiskService } from '../../services/risk.service.js';
+import { AuditService } from '../../services/audit.service.js';
+import { RemediationService } from '../../services/remediation.service.js';
 
 @Module({
   name: 'knowledge-integrity',
@@ -22,6 +24,8 @@ import { RiskService } from '../../services/risk.service.js';
     ConflictService,
     ProvenanceService,
     RiskService,
+    AuditService,
+    RemediationService,
   ],
   exports: [
     DataLoaderService,
@@ -31,6 +35,8 @@ import { RiskService } from '../../services/risk.service.js';
     ConflictService,
     ProvenanceService,
     RiskService,
+    AuditService,
+    RemediationService,
   ],
 })
 export class KnowledgeIntegrityModule {}

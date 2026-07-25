@@ -8,4 +8,6 @@ export { ValidationService, determineStatus } from './validation.service.js';
 export { ConflictService } from './conflict.service.js';
 export { ProvenanceService } from './provenance.service.js';
 export { RiskService, calculateRiskScore, riskLevel } from './risk.service.js';
+export { AuditService } from './audit.service.js';
+export { RemediationService } from './remediation.service.js';
 

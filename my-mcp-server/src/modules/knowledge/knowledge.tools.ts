@@ -7,6 +7,12 @@ import { ProvenanceService } from '../../services/provenance.service.js';
 import { RiskService } from '../../services/risk.service.js';
 import { RemediationService } from '../../services/remediation.service.js';
 import { AuditService } from '../../services/audit.service.js';
+import type {
+  ConflictResult,
+  InvestigationReport,
+  ProposedUpdate,
+  RiskAssessment,
+} from '../../types/index.js';
 
 // ---------------------------------------------------------------------------
 // KnowledgeTools — MCP tool controller (Phases 4–7)
@@ -335,5 +341,109 @@ export class KnowledgeTools {
       documentId: input.document_id,
       limit: input.limit,
     });
+  }
+
+  // ── Tool 10: investigate_knowledge_change (Phase 8) ───────────────────
+
+  @Tool({
+    name: 'investigate_knowledge_change',
+    description:
+      'Run a complete knowledge integrity investigation. Detects all source changes, traces dependencies, validates claims, finds conflicts, assesses risk, and proposes remediations. Returns a comprehensive report.',
+    inputSchema: z.object({
+      source_id: z
+        .string()
+        .min(1)
+        .optional()
+        .describe(
+          'Optional: investigate a specific source. If omitted, investigates ALL changed sources.',
+        ),
+    }),
+    annotations: {
+      readOnlyHint: false,
+      openWorldHint: false,
+    },
+    invocation: {
+      invoking: 'Running complete knowledge integrity investigation…',
+      invoked: 'Knowledge integrity investigation complete.',
+    },
+  })
+  async investigateKnowledgeChange(
+    input: { source_id?: string },
+    ctx: ExecutionContext,
+  ): Promise<InvestigationReport> {
+    ctx.logger.info('Running investigate_knowledge_change', {
+      source_id: input.source_id ?? '(all changed sources)',
+    });
+
+    const changeResult = this.changeDetection.detectChanges(input.source_id);
+    const affectedDocumentIds = new Set<string>();
+    const conflicts: ConflictResult[] = [];
+    const riskAssessments: RiskAssessment[] = [];
+    const proposalRequests: { documentId: string; claimId: string }[] = [];
+    const pendingByClaim = new Map(
+      this.remediationService
+        .getPendingUpdates()
+        .filter((update) => update.status === 'AWAITING_APPROVAL')
+        .map((update) => [`${update.document_id}:${update.claim_id}`, update]),
+    );
+
+    for (const change of changeResult.changes) {
+      const affected = this.dependencyService.findAffectedKnowledge(
+        change.source_id,
+        change.fact_key,
+      );
+      for (const document of affected.affected) {
+        affectedDocumentIds.add(document.document_id);
+      }
+
+      const conflictReport = this.conflictService.detectConflicts(
+        change.source_id,
+        change.fact_key,
+      );
+      const confirmedConflicts = conflictReport.results.filter(
+        (result) => result.status === 'CONFLICT',
+      );
+      conflicts.push(...confirmedConflicts);
+
+      for (const conflict of confirmedConflicts) {
+        const risk = this.riskService.assessRisk(
+          conflict.document_id,
+          conflict.claim_id,
+        );
+        riskAssessments.push(risk);
+
+        const claimKey = `${conflict.document_id}:${conflict.claim_id}`;
+        const existingProposal = pendingByClaim.get(claimKey);
+        if (!existingProposal) {
+          proposalRequests.push({
+            documentId: conflict.document_id,
+            claimId: conflict.claim_id,
+          });
+        }
+      }
+    }
+
+    const proposedRemediations = this.remediationService.proposeUpdates(
+      proposalRequests,
+    );
+
+    return {
+      investigation_summary: {
+        sources_checked: changeResult.total_sources_checked,
+        changes_detected: changeResult.changes.length,
+        documents_affected: affectedDocumentIds.size,
+        conflicts_found: conflicts.length,
+        critical_risks: riskAssessments.filter(
+          (assessment) => assessment.risk_level === 'CRITICAL',
+        ).length,
+        // This count intentionally includes only proposals created by this
+        // invocation; already-pending proposals are not new remediations.
+        remediations_proposed: proposedRemediations.length,
+      },
+      changes: changeResult.changes,
+      conflicts,
+      risk_assessments: riskAssessments,
+      proposed_remediations: proposedRemediations,
+    };
   }
 }

@@ -211,3 +211,22 @@ export interface ConflictReport {
   ambiguous: number;
   results: ConflictResult[];
 }
+
+// ===== High-Level Investigation (Phase 8) =====
+
+export interface InvestigationSummary {
+  sources_checked: number;
+  changes_detected: number;
+  documents_affected: number;
+  conflicts_found: number;
+  critical_risks: number;
+  remediations_proposed: number;
+}
+
+export interface InvestigationReport {
+  investigation_summary: InvestigationSummary;
+  changes: FactChange[];
+  conflicts: ConflictResult[];
+  risk_assessments: RiskAssessment[];
+  proposed_remediations: ProposedUpdate[];
+}

@@ -9,6 +9,12 @@ import { AuditService } from './audit.service.js';
 import { RiskService } from './risk.service.js';
 import { ValidationService } from './validation.service.js';
 
+export interface ProposedUpdateRequest {
+  documentId: string;
+  claimId: string;
+  suggestedText?: string;
+}
+
 @Injectable({
   deps: [DataLoaderService, AuditService, RiskService, ValidationService],
 })
@@ -21,6 +27,53 @@ export class RemediationService {
   ) {}
 
   proposeUpdate(
+    documentId: string,
+    claimId: string,
+    suggestedText?: string,
+  ): ProposedUpdate {
+    const proposal = this.createProposal(documentId, claimId, suggestedText);
+    this.dataLoader.savePendingUpdates([
+      ...this.dataLoader.getPendingUpdates(),
+      proposal,
+    ]);
+    return proposal;
+  }
+
+  /**
+   * Create several proposals as one all-or-nothing persistence operation.
+   * Every request is validated before pending_updates.json is changed.
+   */
+  proposeUpdates(requests: ProposedUpdateRequest[]): ProposedUpdate[] {
+    if (requests.length === 0) return [];
+
+    const seenClaims = new Set<string>();
+    for (const request of requests) {
+      const key = `${request.documentId}:${request.claimId}`;
+      if (seenClaims.has(key)) {
+        throw new KnowledgeInputError(
+          `Duplicate remediation request for claim: ${request.claimId}`,
+        );
+      }
+      seenClaims.add(key);
+    }
+
+    // Build every proposal before the single write so a validation failure
+    // cannot leave a partially-created investigation in persistent state.
+    const proposals = requests.map((request) =>
+      this.createProposal(
+        request.documentId,
+        request.claimId,
+        request.suggestedText,
+      ),
+    );
+    this.dataLoader.savePendingUpdates([
+      ...this.dataLoader.getPendingUpdates(),
+      ...proposals,
+    ]);
+    return proposals;
+  }
+
+  private createProposal(
     documentId: string,
     claimId: string,
     suggestedText?: string,
@@ -62,10 +115,6 @@ export class RemediationService {
       proposed_at: new Date().toISOString(),
     };
 
-    this.dataLoader.savePendingUpdates([
-      ...this.dataLoader.getPendingUpdates(),
-      proposal,
-    ]);
     return proposal;
   }
 

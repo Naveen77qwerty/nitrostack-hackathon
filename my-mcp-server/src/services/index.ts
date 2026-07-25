@@ -10,4 +10,4 @@ export { ProvenanceService } from './provenance.service.js';
 export { RiskService, calculateRiskScore, riskLevel } from './risk.service.js';
 export { AuditService } from './audit.service.js';
 export { RemediationService } from './remediation.service.js';
-
+export type { ProposedUpdateRequest } from './remediation.service.js';

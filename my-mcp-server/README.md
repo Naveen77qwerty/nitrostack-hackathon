@@ -378,7 +378,27 @@ Alternatively, let the connected LLM orchestrate the low-level tools itself. For
 
 Stage 13 — Connect an MCP Client
 
-Now connect the server to at least one compatible client.
+Build the server, then connect a compatible MCP client over STDIO:
+
+```bash
+npm run build
+```
+
+For NitroStudio, run `npm run dev`, select the project, and confirm the nine
+core tools plus the optional `investigate_knowledge_change` tool are listed.
+For Claude Desktop, copy [examples/claude-desktop.config.json](examples/claude-desktop.config.json)
+into its MCP configuration and replace the `cwd` placeholder with this project’s
+absolute path. Restart Claude Desktop after saving the configuration.
+
+The production connection is verified locally with:
+
+```bash
+npm run test:phase9
+```
+
+That test starts `dist/index.js` as a standard MCP STDIO server, uses the
+official MCP client SDK to discover all tools, resources, and prompts, and
+calls `detect_source_changes` without modifying knowledge data.
 
 The ideal demo is:
 
@@ -423,15 +443,17 @@ assess_knowledge_risk()
 
 trace_knowledge_provenance()
 
-And answer:
+The precise counts are derived from the synthetic data at runtime. The client
+should summarize the returned evidence, for example:
 
-"The Enterprise Discount Policy changed from 20% to 10%. I found four dependent documents. Two contain confirmed contradictions. The Sales Proposal Template is critical because it is customer-facing and financially sensitive."
+"The Enterprise Discount Policy changed from 20% to 10%. I found dependent documents with confirmed contradictions. The Sales Proposal Template is critical because it is customer-facing and financially sensitive."
 
 Then:
 
 "Fix the critical ones."
 
-The MCP should not immediately modify them.
+Only `approve_knowledge_update` modifies documents. `propose_knowledge_update`
+creates reviewable entries with `AWAITING_APPROVAL` status.
 
 It returns proposed changes requiring approval.
 

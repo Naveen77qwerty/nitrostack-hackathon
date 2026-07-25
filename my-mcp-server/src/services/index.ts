@@ -1,3 +1,4 @@
-// Enterprise Knowledge Integrity Services
-// Will be implemented in Phases 3-7
-export {};
+// Enterprise Knowledge Integrity Services — Phase 3
+export { DataLoaderService } from './data-loader.service.js';
+export { DependencyService } from './dependency.service.js';
+

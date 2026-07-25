@@ -134,3 +134,76 @@ export interface ProvenanceChain {
   }[];
   is_current: boolean;
 }
+
+// ===== Dependency Traversal (used by DependencyService) =====
+
+export interface AffectedClaim {
+  claim_id: string;
+  claim_text: string;
+  section: string;
+}
+
+export interface AffectedDocument {
+  document_id: string;
+  document_title: string;
+  department: string;
+  criticality: string;
+  customer_facing: boolean;
+  affected_claims: AffectedClaim[];
+}
+
+export interface AffectedKnowledge {
+  source_id: string;
+  fact_key: string;
+  current_value: string;
+  total_affected_documents: number;
+  total_affected_claims: number;
+  affected: AffectedDocument[];
+}
+
+export interface DocumentDependency {
+  source_id: string;
+  source_title: string;
+  fact_key: string;
+  fact_value: string;
+  claim_id: string;
+  dependency_type: 'direct' | 'indirect';
+}
+
+export interface DependencyTreeNode {
+  fact_key: string;
+  fact_value: string;
+  dependent_documents: {
+    document_id: string;
+    document_title: string;
+    claim_id: string;
+  }[];
+}
+
+export interface DependencyTree {
+  source_id: string;
+  source_title: string;
+  facts: DependencyTreeNode[];
+}
+
+// ===== Conflict Report (used by ConflictService, Phase 5) =====
+
+export interface ConflictResult {
+  document_id: string;
+  document_title: string;
+  claim_id: string;
+  claim_text: string;
+  status: ValidationStatus;
+  explanation: string;
+}
+
+export interface ConflictReport {
+  source_id: string;
+  fact_key: string;
+  authoritative_value: string;
+  total_claims_checked: number;
+  conflicts: number;
+  valid: number;
+  ambiguous: number;
+  results: ConflictResult[];
+}

@@ -1,6 +1,7 @@
 import { readFileSync, writeFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, resolve, join } from 'path';
+import { Injectable } from '@nitrostack/core';
 
 import type {
   AuthoritativeSource,
@@ -60,6 +61,7 @@ function writeJson<T>(filename: string, data: T): void {
 // DataLoaderService
 // ---------------------------------------------------------------------------
 
+@Injectable()
 export class DataLoaderService {
   // ── Read operations ──────────────────────────────────────────────────────
 

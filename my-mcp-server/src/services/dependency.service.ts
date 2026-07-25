@@ -1,3 +1,4 @@
+import { Injectable } from '@nitrostack/core';
 import type {
   Dependency,
   Document,
@@ -19,6 +20,7 @@ import { DataLoaderService } from './data-loader.service.js';
 //   3. What is the full dependency tree for a given source?
 // ---------------------------------------------------------------------------
 
+@Injectable({ deps: [DataLoaderService] })
 export class DependencyService {
   constructor(private readonly dataLoader: DataLoaderService) {}
 

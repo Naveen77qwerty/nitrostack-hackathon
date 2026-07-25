@@ -8,6 +8,8 @@
     "dev": "nitrostack-cli dev",
     "build": "nitrostack-cli build",
     "test:phase4": "tsc -p tsconfig.test.json && node --test --test-force-exit .test-dist/tests/phase4.test.js",
+    "test:phase5": "npm run test:phase4",
+    "test:phase6": "npm run test:phase4",
     "start": "npm run build && nitrostack-cli start",
     "start:prod": "nitrostack-cli start",
     "upgrade": "nitrostack-cli upgrade",

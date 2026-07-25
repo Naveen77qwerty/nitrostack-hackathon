@@ -72,15 +72,17 @@ export interface RiskAssessment {
   claim_id: string;
   risk_level: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
   risk_score: number;                // 0–100
-  factors: {
-    customer_facing: boolean;
-    financial_impact: boolean;
-    compliance_impact: boolean;
-    operational_impact: boolean;
-    confirmed_conflict: boolean;
-    document_criticality: string;
-  };
+  factors: RiskFactors;
   reasons: string[];
+}
+
+export interface RiskFactors {
+  customer_facing: boolean;
+  financial_impact: boolean;
+  compliance_impact: boolean;
+  operational_impact: boolean;
+  confirmed_conflict: boolean;
+  document_criticality: string;
 }
 
 // ===== Remediation =====
@@ -133,6 +135,7 @@ export interface ProvenanceChain {
     status: 'current' | 'superseded';
   }[];
   is_current: boolean;
+  conclusion: string;
 }
 
 // ===== Dependency Traversal (used by DependencyService) =====

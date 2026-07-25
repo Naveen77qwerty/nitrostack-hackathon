@@ -3,7 +3,7 @@
     "knowledge-integrity": {
       "command": "node",
       "args": ["dist/index.js"],
-      "cwd": "/absolute/path/to/my-mcp-server"
+      "cwd": "C:/REPLACE/WITH/ABSOLUTE/PATH/TO/my-mcp-server"
     }
   }
 }

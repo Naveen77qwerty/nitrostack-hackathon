@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
+  "main": "dist/index.js",
   "description": "An enterprise AI platform that identifies repetitive employee workflows across multiple business tools and transforms them into intelligent automations using MCP",
   "scripts": {
     "dev": "nitrostack-cli dev",

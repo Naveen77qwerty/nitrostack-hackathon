@@ -1,6 +1,6 @@
 import { Injectable } from '@nitrostack/core';
 import type { FactChange, AuthoritativeSource } from '../types/index.js';
-import { DataLoaderService } from './data-loader.service.js';
+import { DataLoaderService, KnowledgeInputError } from './data-loader.service.js';
 
 // ---------------------------------------------------------------------------
 // ChangeDetectionService
@@ -38,6 +38,10 @@ export class ChangeDetectionService {
   detectChanges(sourceId?: string): ChangeDetectionResult {
     const currentSources = this.dataLoader.getAuthoritativeSources();
     const previousSources = this.dataLoader.getPreviousSources();
+
+    if (sourceId !== undefined && !this.dataLoader.getSourceById(sourceId)) {
+      throw new KnowledgeInputError(`Unknown authoritative source: ${sourceId}`);
+    }
 
     // If a specific source was requested, filter both lists to just that one.
     const sourcesToCheck = sourceId

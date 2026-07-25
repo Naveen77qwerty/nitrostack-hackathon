@@ -9,7 +9,7 @@ import type {
   DependencyTree,
   DependencyTreeNode,
 } from '../types/index.js';
-import { DataLoaderService } from './data-loader.service.js';
+import { DataLoaderService, KnowledgeInputError } from './data-loader.service.js';
 
 // ---------------------------------------------------------------------------
 // DependencyService
@@ -39,7 +39,13 @@ export class DependencyService {
 
     // Current authoritative value (may be undefined if source isn't found)
     const source = this.dataLoader.getSourceById(sourceId);
-    const currentValue = source?.facts[factKey] ?? 'unknown';
+    if (!source) {
+      throw new KnowledgeInputError(`Unknown authoritative source: ${sourceId}`);
+    }
+    if (!(factKey in source.facts)) {
+      throw new KnowledgeInputError(`Unknown fact for ${sourceId}: ${factKey}`);
+    }
+    const currentValue = source.facts[factKey];
 
     // Filter matching deps
     const matchingDeps = dependencies.filter(
@@ -48,6 +54,7 @@ export class DependencyService {
 
     // Build the affected-documents list, grouping claims per document
     const docMap = new Map<string, AffectedDocument>();
+    const seenClaims = new Set<string>();
 
     for (const dep of matchingDeps) {
       const doc = documents.find((d) => d.id === dep.dependent_document_id);
@@ -56,10 +63,15 @@ export class DependencyService {
       const claim = doc.claims.find((c) => c.id === dep.dependent_claim_id);
       if (!claim) continue;
 
+      const claimKey = `${doc.id}:${claim.id}`;
+      if (seenClaims.has(claimKey)) continue;
+      seenClaims.add(claimKey);
+
       const affectedClaim: AffectedClaim = {
         claim_id: claim.id,
         claim_text: claim.text,
         section: claim.section,
+        dependency_type: dep.dependency_type,
       };
 
       if (docMap.has(doc.id)) {

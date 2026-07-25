@@ -141,6 +141,7 @@ export interface AffectedClaim {
   claim_id: string;
   claim_text: string;
   section: string;
+  dependency_type: 'direct' | 'indirect';
 }
 
 export interface AffectedDocument {

@@ -34,6 +34,7 @@ export class KnowledgeTools {
     inputSchema: z.object({
       source_id: z
         .string()
+        .min(1)
         .optional()
         .describe(
           'Specific source ID to check (e.g. "discount-policy"). If omitted, checks ALL sources.',
@@ -78,9 +79,11 @@ export class KnowledgeTools {
     inputSchema: z.object({
       source_id: z
         .string()
+        .min(1)
         .describe('The authoritative source ID (e.g. "discount-policy")'),
       fact_key: z
         .string()
+        .min(1)
         .describe('The specific fact key within the source (e.g. "maximum_discount")'),
     }),
     annotations: {

@@ -1,11 +1,8 @@
 # Dependencies
 node_modules/
-src/widgets/node_modules/
 
 # Build outputs
 dist/
-src/widgets/.next/
-src/widgets/out/
 
 # Environment files
 .env

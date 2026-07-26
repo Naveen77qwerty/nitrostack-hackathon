@@ -179,14 +179,19 @@ export class DataLoaderService {
   /** Current (v2) authoritative sources — the ground truth. */
   getAuthoritativeSources(): AuthoritativeSource[] {
     if (!this.authoritativeSources) {
-      const jsonSources = readJson('authoritative_sources.json', z.array(sourceSchema));
-      const pdfSources = this.pdfIngestionService.loadPdfSources(join(DATA_DIR, 'pdfs'));
-      
-      this.authoritativeSources = [...jsonSources, ...pdfSources];
+      this.authoritativeSources = readJson('authoritative_sources.json', z.array(sourceSchema));
       this.sourceIndex = buildUniqueIndex(this.authoritativeSources, 'authoritative source');
       this.validateReferences();
     }
     return this.authoritativeSources;
+  }
+
+  /**
+   * Load PDF-based authoritative sources from the pdfs/ directory.
+   * Call this explicitly when you want to merge PDF sources into the data set.
+   */
+  loadPdfSources(): AuthoritativeSource[] {
+    return this.pdfIngestionService.loadPdfSources(join(DATA_DIR, 'pdfs'));
   }
 
   /** Previous (v1) authoritative sources — used for change detection. */

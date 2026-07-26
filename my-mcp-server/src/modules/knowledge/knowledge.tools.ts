@@ -1,4 +1,5 @@
-import { ToolDecorator as Tool, ExecutionContext, z, Injectable } from '@nitrostack/core';
+import { ToolDecorator as Tool, ExecutionContext, z, Injectable, UseMiddleware } from '@nitrostack/core';
+import { ErrorHandlingMiddleware } from '../../middleware/error-handling.middleware.js';
 import { ChangeDetectionService } from '../../services/change-detection.service.js';
 import { DependencyService } from '../../services/dependency.service.js';
 import { ValidationService } from '../../services/validation.service.js';
@@ -87,6 +88,7 @@ export class KnowledgeTools {
       invoked: 'Source change detection complete.',
     },
   })
+  @UseMiddleware(ErrorHandlingMiddleware)
   async detectSourceChanges(
     input: { source_id?: string },
     ctx: ExecutionContext,
@@ -135,6 +137,7 @@ export class KnowledgeTools {
       invoked: 'Dependency traversal complete.',
     },
   })
+  @UseMiddleware(ErrorHandlingMiddleware)
   async findAffectedKnowledge(
     input: { source_id: string; fact_key: string },
     ctx: ExecutionContext,
@@ -171,6 +174,7 @@ export class KnowledgeTools {
       invoked: 'Claim validation complete.',
     },
   })
+  @UseMiddleware(ErrorHandlingMiddleware)
   async validateClaim(
     input: { document_id: string; claim_id: string },
     ctx: ExecutionContext,
@@ -198,6 +202,7 @@ export class KnowledgeTools {
       invoked: 'Knowledge conflict detection complete.',
     },
   })
+  @UseMiddleware(ErrorHandlingMiddleware)
   async detectKnowledgeConflicts(
     input: { source_id: string; fact_key: string },
     ctx: ExecutionContext,
@@ -225,6 +230,7 @@ export class KnowledgeTools {
       invoked: 'Knowledge provenance trace complete.',
     },
   })
+  @UseMiddleware(ErrorHandlingMiddleware)
   async traceKnowledgeProvenance(
     input: { document_id: string; claim_id: string },
     ctx: ExecutionContext,
@@ -252,6 +258,7 @@ export class KnowledgeTools {
       invoked: 'Knowledge risk assessment complete.',
     },
   })
+  @UseMiddleware(ErrorHandlingMiddleware)
   async assessKnowledgeRisk(
     input: { document_id: string; claim_id: string },
     ctx: ExecutionContext,
@@ -280,6 +287,7 @@ export class KnowledgeTools {
       invoked: 'Knowledge update proposal created and awaiting approval.',
     },
   })
+  @UseMiddleware(ErrorHandlingMiddleware)
   async proposeKnowledgeUpdate(
     input: { document_id: string; claim_id: string; suggested_text?: string },
     ctx: ExecutionContext,
@@ -315,6 +323,7 @@ export class KnowledgeTools {
       invoked: 'Knowledge update applied and audited.',
     },
   })
+  @UseMiddleware(ErrorHandlingMiddleware)
   async approveKnowledgeUpdate(
     input: { proposal_id: string; reason?: string },
     ctx: ExecutionContext,
@@ -353,6 +362,7 @@ export class KnowledgeTools {
       invoked: 'Knowledge update proposal rejected.',
     },
   })
+  @UseMiddleware(ErrorHandlingMiddleware)
   async rejectKnowledgeUpdate(
     input: { proposal_id: string; reason?: string },
     ctx: ExecutionContext,
@@ -385,6 +395,7 @@ export class KnowledgeTools {
       invoked: 'Knowledge audit history retrieved.',
     },
   })
+  @UseMiddleware(ErrorHandlingMiddleware)
   async getAuditLog(
     input: { document_id?: string; limit?: number },
     ctx: ExecutionContext,
@@ -421,6 +432,7 @@ export class KnowledgeTools {
       invoked: 'Knowledge integrity investigation complete.',
     },
   })
+  @UseMiddleware(ErrorHandlingMiddleware)
   async investigateKnowledgeChange(
     input: { source_id?: string },
     ctx: ExecutionContext,
@@ -516,6 +528,7 @@ export class KnowledgeTools {
       invoked: 'Batch approval complete.',
     },
   })
+  @UseMiddleware(ErrorHandlingMiddleware)
   async batchApproveUpdates(
     input: { proposal_ids: string[]; risk_ceiling?: string; reason?: string },
     ctx: ExecutionContext,
@@ -567,6 +580,7 @@ export class KnowledgeTools {
       invoked: 'Compliance report generated.',
     },
   })
+  @UseMiddleware(ErrorHandlingMiddleware)
   async generateComplianceReport(
     input: {
       department?: string;
@@ -615,6 +629,7 @@ export class KnowledgeTools {
       invoked: 'Knowledge drift summary complete.',
     },
   })
+  @UseMiddleware(ErrorHandlingMiddleware)
   async getKnowledgeDriftSummary(
     input: { source_id?: string },
     ctx: ExecutionContext,

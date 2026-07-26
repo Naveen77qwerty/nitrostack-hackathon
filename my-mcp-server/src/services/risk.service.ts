@@ -29,13 +29,7 @@ export class RiskService {
       );
     }
 
-    const dependency = this.dataLoader
-      .getDependencies()
-      .find(
-        (item) =>
-          item.dependent_document_id === documentId &&
-          item.dependent_claim_id === claimId,
-      );
+    const dependency = this.dataLoader.getDependencyForClaim(documentId, claimId);
     if (!dependency) {
       throw new KnowledgeInputError(
         `Claim has no authoritative dependency: ${claimId}`,
@@ -87,6 +81,7 @@ export function calculateRiskScore(factors: RiskFactors): number {
   if (factors.customer_facing) score += 25;
   if (factors.financial_impact) score += 20;
   if (factors.compliance_impact) score += 15;
+  if (factors.operational_impact) score += 10;
 
   switch (factors.document_criticality) {
     case 'critical':

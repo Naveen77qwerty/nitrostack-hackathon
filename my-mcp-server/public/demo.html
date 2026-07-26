@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Knowledge Integrity MCP Server — Demo</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --surface: #1e293b;
+      --surface-2: #334155;
+      --border: #475569;
+      --text: #e2e8f0;
+      --text-muted: #94a3b8;
+      --accent: #38bdf8;
+      --green: #4ade80;
+      --yellow: #facc15;
+      --red: #f87171;
+      --orange: #fb923c;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', -apple-system, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+    .header { padding: 2rem; text-align: center; border-bottom: 1px solid var(--border); }
+    .header h1 { font-size: 1.8rem; margin-bottom: 0.5rem; }
+    .header p { color: var(--text-muted); }
+
+    .container { max-width: 1200px; margin: 0 auto; padding: 2rem; }
+
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .card:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,0,0,0.3); }
+    .card h3 { font-size: 1rem; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem; }
+    .card .tag {
+      font-size: 0.7rem;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-weight: 600;
+    }
+    .tag.read { background: rgba(74, 222, 128, 0.15); color: var(--green); }
+    .tag.write { background: rgba(251, 146, 60, 0.15); color: var(--orange); }
+    .tag.resource { background: rgba(56, 189, 248, 0.15); color: var(--accent); }
+    .tag.prompt { background: rgba(250, 204, 21, 0.15); color: var(--yellow); }
+
+    .card p { color: var(--text-muted); font-size: 0.85rem; line-height: 1.5; }
+
+    .flow { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 2rem; margin-bottom: 2rem; }
+    .flow h2 { font-size: 1.2rem; margin-bottom: 1rem; }
+    .flow-steps { display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; }
+    .flow-step {
+      background: var(--surface-2);
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      font-size: 0.85rem;
+      text-align: center;
+      min-width: 140px;
+    }
+    .flow-step .num { font-size: 1.5rem; font-weight: 700; color: var(--accent); }
+    .flow-arrow { color: var(--text-muted); font-size: 1.2rem; }
+
+    .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 2rem; }
+    .stat {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      text-align: center;
+    }
+    .stat .value { font-size: 2rem; font-weight: 700; color: var(--accent); }
+    .stat .label { color: var(--text-muted); font-size: 0.8rem; margin-top: 0.25rem; }
+
+    .code-block {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      overflow-x: auto;
+      line-height: 1.6;
+    }
+    .code-block .comment { color: #6b7280; }
+    .code-block .keyword { color: #c084fc; }
+    .code-block .string { color: #4ade80; }
+    .code-block .number { color: #facc15; }
+
+    @media (max-width: 768px) {
+      .stats { grid-template-columns: repeat(2, 1fr); }
+      .flow-steps { flex-direction: column; }
+      .flow-arrow { transform: rotate(90deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Enterprise Knowledge Integrity MCP Server</h1>
+    <p>Detect contradictions, trace dependencies, assess risk, and remediate with human approval</p>
+  </div>
+
+  <div class="container">
+    <!-- Stats -->
+    <div class="stats">
+      <div class="stat">
+        <div class="value">11</div>
+        <div class="label">MCP Tools</div>
+      </div>
+      <div class="stat">
+        <div class="value">4</div>
+        <div class="label">MCP Resources</div>
+      </div>
+      <div class="stat">
+        <div class="value">2</div>
+        <div class="label">MCP Prompts</div>
+      </div>
+      <div class="stat">
+        <div class="value">6</div>
+        <div class="label">Services</div>
+      </div>
+    </div>
+
+    <!-- Investigation Flow -->
+    <div class="flow">
+      <h2>Typical Investigation Flow</h2>
+      <div class="flow-steps">
+        <div class="flow-step">
+          <div class="num">1</div>
+          <div>detect_source_changes</div>
+        </div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-step">
+          <div class="num">2</div>
+          <div>find_affected_knowledge</div>
+        </div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-step">
+          <div class="num">3</div>
+          <div>detect_knowledge_conflicts</div>
+        </div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-step">
+          <div class="num">4</div>
+          <div>assess_knowledge_risk</div>
+        </div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-step">
+          <div class="num">5</div>
+          <div>trace_knowledge_provenance</div>
+        </div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-step">
+          <div class="num">6</div>
+          <div>propose_knowledge_update</div>
+        </div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-step">
+          <div class="num">7</div>
+          <div>approve/reject_knowledge_update</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tools -->
+    <div class="grid">
+      <div class="card">
+        <h3><span class="tag read">READ</span> detect_source_changes</h3>
+        <p>Compare v1 vs v2 authoritative sources to find changed facts.</p>
+      </div>
+      <div class="card">
+        <h3><span class="tag read">READ</span> find_affected_knowledge</h3>
+        <p>Traverse the dependency graph to find all documents and claims affected by a fact change.</p>
+      </div>
+      <div class="card">
+        <h3><span class="tag read">READ</span> validate_claim</h3>
+        <p>Check if a specific claim is VALID, CONFLICT, or AMBIGUOUS against its authoritative source.</p>
+      </div>
+      <div class="card">
+        <h3><span class="tag read">READ</span> detect_knowledge_conflicts</h3>
+        <p>Find all knowledge contradictions across enterprise documents for a given fact.</p>
+      </div>
+      <div class="card">
+        <h3><span class="tag read">READ</span> trace_knowledge_provenance</h3>
+        <p>Trace the origin of a claim through source version history.</p>
+      </div>
+      <div class="card">
+        <h3><span class="tag read">READ</span> assess_knowledge_risk</h3>
+        <p>Deterministic risk scoring based on customer-facing impact, financial, compliance, and operational factors.</p>
+      </div>
+      <div class="card">
+        <h3><span class="tag read">READ</span> investigate_knowledge_change</h3>
+        <p>Run a complete read-only investigation across all changed sources. One-call comprehensive report.</p>
+      </div>
+      <div class="card">
+        <h3><span class="tag write">WRITE</span> propose_knowledge_update</h3>
+        <p>Create a remediation proposal for a conflicting claim. Status: AWAITING_APPROVAL.</p>
+      </div>
+      <div class="card">
+        <h3><span class="tag write">WRITE</span> approve_knowledge_update</h3>
+        <p>Approve and apply a pending update. The only tool that modifies the knowledge base.</p>
+      </div>
+      <div class="card">
+        <h3><span class="tag write">WRITE</span> reject_knowledge_update</h3>
+        <p>Reject a pending proposal. Records the decision in the audit log.</p>
+      </div>
+      <div class="card">
+        <h3><span class="tag read">READ</span> get_audit_log</h3>
+        <p>Retrieve the history of all remediation decisions.</p>
+      </div>
+    </div>
+
+    <!-- Resources -->
+    <h2 style="margin-bottom: 1rem;">MCP Resources</h2>
+    <div class="grid" style="margin-bottom: 2rem;">
+      <div class="card">
+        <h3><span class="tag resource">RESOURCE</span> knowledge://sources</h3>
+        <p>Current authoritative enterprise sources and their facts.</p>
+      </div>
+      <div class="card">
+        <h3><span class="tag resource">RESOURCE</span> knowledge://documents</h3>
+        <p>All enterprise documents with claims and dependencies.</p>
+      </div>
+      <div class="card">
+        <h3><span class="tag resource">RESOURCE</span> knowledge://pending-updates</h3>
+        <p>Proposals awaiting human approval.</p>
+      </div>
+      <div class="card">
+        <h3><span class="tag resource">RESOURCE</span> knowledge://audit-log</h3>
+        <p>History of all approved, rejected, and applied changes.</p>
+      </div>
+    </div>
+
+    <!-- Prompts -->
+    <h2 style="margin-bottom: 1rem;">MCP Prompts</h2>
+    <div class="grid" style="margin-bottom: 2rem;">
+      <div class="card">
+        <h3><span class="tag prompt">PROMPT</span> investigate_policy_change</h3>
+        <p>Guided investigation of a specific policy change. Walks the LLM through the full tool flow.</p>
+      </div>
+      <div class="card">
+        <h3><span class="tag prompt">PROMPT</span> knowledge_health_check</h3>
+        <p>Full enterprise knowledge consistency health check across all sources.</p>
+      </div>
+    </div>
+
+    <!-- Example Output -->
+    <h2 style="margin-bottom: 1rem;">Example: Risk Assessment Output</h2>
+    <div class="code-block">
+      <span class="comment">// assess_knowledge_risk for sales-playbook.claim-1</span><br>
+      {<br>
+      &nbsp;&nbsp;<span class="string">"document_id"</span>: <span class="string">"sales-playbook"</span>,<br>
+      &nbsp;&nbsp;<span class="string">"document_title"</span>: <span class="string">"Enterprise Sales Playbook"</span>,<br>
+      &nbsp;&nbsp;<span class="string">"claim_id"</span>: <span class="string">"sales-playbook.claim-1"</span>,<br>
+      &nbsp;&nbsp;<span class="string">"risk_level"</span>: <span class="string">"CRITICAL"</span>,<br>
+      &nbsp;&nbsp;<span class="string">"risk_score"</span>: <span class="number">95</span>,<br>
+      &nbsp;&nbsp;<span class="string">"factors"</span>: {<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;<span class="string">"customer_facing"</span>: <span class="keyword">true</span>,<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;<span class="string">"financial_impact"</span>: <span class="keyword">true</span>,<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;<span class="string">"compliance_impact"</span>: <span class="keyword">false</span>,<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;<span class="string">"operational_impact"</span>: <span class="keyword">true</span>,<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;<span class="string">"confirmed_conflict"</span>: <span class="keyword">true</span>,<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;<span class="string">"document_criticality"</span>: <span class="string">"critical"</span><br>
+      &nbsp;&nbsp;},<br>
+      &nbsp;&nbsp;<span class="string">"reasons"</span>: [<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;<span class="string">"Claim conflicts with authoritative knowledge"</span>,<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;<span class="string">"Document is customer-facing"</span>,<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;<span class="string">"Fact has potential financial impact"</span>,<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;<span class="string">"Fact has potential operational impact"</span>,<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;<span class="string">"Document criticality is critical"</span><br>
+      &nbsp;&nbsp;]<br>
+      }
+    </div>
+  </div>
+</body>
+</html>

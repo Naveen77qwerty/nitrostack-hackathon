@@ -29,13 +29,7 @@ export class ValidationService {
       );
     }
 
-    const dependency = this.dataLoader
-      .getDependencies()
-      .find(
-        (item) =>
-          item.dependent_document_id === documentId &&
-          item.dependent_claim_id === claimId,
-      );
+    const dependency = this.dataLoader.getDependencyForClaim(documentId, claimId);
 
     if (!dependency) {
       return {

@@ -110,7 +110,7 @@ test('calculates deterministic risk for a confirmed customer-facing conflict', (
     'sales-playbook.claim-1',
   );
 
-  assert.equal(result.risk_score, 85);
+  assert.equal(result.risk_score, 95);
   assert.equal(result.risk_level, 'CRITICAL');
   assert.equal(result.factors.confirmed_conflict, true);
   assert.equal(result.factors.customer_facing, true);

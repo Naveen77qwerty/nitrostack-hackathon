@@ -63,6 +63,7 @@ export class KnowledgeTools {
       source_id: z
         .string()
         .min(1)
+        .max(100)
         .optional()
         .describe(
           'Specific source ID to check (e.g. "discount-policy"). If omitted, checks ALL sources.',
@@ -108,10 +109,12 @@ export class KnowledgeTools {
       source_id: z
         .string()
         .min(1)
+        .max(100)
         .describe('The authoritative source ID (e.g. "discount-policy")'),
       fact_key: z
         .string()
         .min(1)
+        .max(100)
         .describe('The specific fact key within the source (e.g. "maximum_discount")'),
     }),
     annotations: {
@@ -147,8 +150,8 @@ export class KnowledgeTools {
     description:
       'Validate whether a specific claim in a document is still consistent with its authoritative source. Returns VALID, CONFLICT, or AMBIGUOUS.',
     inputSchema: z.object({
-      document_id: z.string().min(1).describe('The document containing the claim'),
-      claim_id: z.string().min(1).describe('The specific claim ID to validate'),
+      document_id: z.string().min(1).max(100).describe('The document containing the claim'),
+      claim_id: z.string().min(1).max(100).describe('The specific claim ID to validate'),
     }),
     annotations: {
       readOnlyHint: true,
@@ -174,8 +177,8 @@ export class KnowledgeTools {
     description:
       'Find all knowledge contradictions across enterprise documents for a given authoritative fact. Compares every claim that depends on the fact and reports conflicts.',
     inputSchema: z.object({
-      source_id: z.string().min(1).describe('The authoritative source ID'),
-      fact_key: z.string().min(1).describe('The specific fact key to check conflicts for'),
+      source_id: z.string().min(1).max(100).describe('The authoritative source ID'),
+      fact_key: z.string().min(1).max(100).describe('The specific fact key to check conflicts for'),
     }),
     annotations: {
       readOnlyHint: true,
@@ -201,8 +204,8 @@ export class KnowledgeTools {
     description:
       'Trace the origin of a specific claim. Shows which authoritative source it depends on, the version history of that source, and whether the claim is based on current or outdated information.',
     inputSchema: z.object({
-      document_id: z.string().min(1).describe('The document containing the claim'),
-      claim_id: z.string().min(1).describe('The specific claim to trace'),
+      document_id: z.string().min(1).max(100).describe('The document containing the claim'),
+      claim_id: z.string().min(1).max(100).describe('The specific claim to trace'),
     }),
     annotations: {
       readOnlyHint: true,
@@ -228,8 +231,8 @@ export class KnowledgeTools {
     description:
       'Assess the risk level of a knowledge conflict. Uses deterministic scoring based on customer-facing impact, financial impact, compliance impact, and document criticality. The server calculates the score — the LLM should explain it.',
     inputSchema: z.object({
-      document_id: z.string().min(1).describe('The document with the conflict'),
-      claim_id: z.string().min(1).describe('The conflicting claim'),
+      document_id: z.string().min(1).max(100).describe('The document with the conflict'),
+      claim_id: z.string().min(1).max(100).describe('The conflicting claim'),
     }),
     annotations: {
       readOnlyHint: true,
@@ -255,9 +258,9 @@ export class KnowledgeTools {
     description:
       'Generate a remediation proposal to fix a knowledge conflict. Creates a pending update with status AWAITING_APPROVAL. The update is NOT applied until explicitly approved via approve_knowledge_update.',
     inputSchema: z.object({
-      document_id: z.string().min(1).describe('The document to update'),
-      claim_id: z.string().min(1).describe('The conflicting claim to fix'),
-      suggested_text: z.string().min(1).optional().describe('Optional custom replacement text'),
+      document_id: z.string().min(1).max(100).describe('The document to update'),
+      claim_id: z.string().min(1).max(100).describe('The conflicting claim to fix'),
+      suggested_text: z.string().min(1).max(5000).optional().describe('Optional custom replacement text'),
     }),
     annotations: {
       readOnlyHint: false,
@@ -291,8 +294,8 @@ export class KnowledgeTools {
     description:
       'Approve and apply a pending knowledge update. This is the ONLY tool that modifies the knowledge base. Requires a valid proposal_id from propose_knowledge_update. Records the change in the audit log.',
     inputSchema: z.object({
-      proposal_id: z.string().min(1).describe('The proposal ID to approve'),
-      reason: z.string().optional().describe('Optional reason for approval'),
+      proposal_id: z.string().min(1).max(100).describe('The proposal ID to approve'),
+      reason: z.string().max(500).optional().describe('Optional reason for approval'),
     }),
     annotations: {
       readOnlyHint: false,
@@ -313,15 +316,56 @@ export class KnowledgeTools {
     return this.remediationService.approveUpdate(input.proposal_id, input.reason);
   }
 
-  // ── Tool 9: get_audit_log ─────────────────────────────────────────────────
+  // ── Tool 9: reject_knowledge_update ──────────────────────────────────────
+
+  /**
+   * Reject a pending knowledge update proposal. The proposal is marked as
+   * REJECTED and recorded in the audit log. Rejected proposals cannot be
+   * approved or rejected again.
+   */
+  @Tool({
+    name: 'reject_knowledge_update',
+    description:
+      'Reject a pending knowledge update proposal. Marks the proposal as REJECTED and records the decision in the audit log. Rejected proposals cannot be approved later.',
+    inputSchema: z.object({
+      proposal_id: z.string().min(1).max(100).describe('The proposal ID to reject'),
+      reason: z
+        .string()
+        .max(500)
+        .optional()
+        .describe('Optional reason for rejection'),
+    }),
+    annotations: {
+      readOnlyHint: false,
+      openWorldHint: false,
+    },
+    invocation: {
+      invoking: 'Rejecting knowledge update proposal…',
+      invoked: 'Knowledge update proposal rejected.',
+    },
+  })
+  async rejectKnowledgeUpdate(
+    input: { proposal_id: string; reason?: string },
+    ctx: ExecutionContext,
+  ) {
+    ctx.logger.info('Running reject_knowledge_update', {
+      proposal_id: input.proposal_id,
+    });
+    return this.remediationService.rejectUpdate(
+      input.proposal_id,
+      input.reason,
+    );
+  }
+
+  // ── Tool 10: get_audit_log ─────────────────────────────────────────────────
 
   @Tool({
     name: 'get_audit_log',
     description:
       'Retrieve the history of all approved changes and remediation decisions. Shows complete remediation history.',
     inputSchema: z.object({
-      document_id: z.string().min(1).optional().describe('Optional document filter'),
-      limit: z.number().int().min(0).optional().describe('Optional maximum number of entries, default 50'),
+      document_id: z.string().min(1).max(100).optional().describe('Optional document filter'),
+      limit: z.number().int().min(0).max(500).optional().describe('Optional maximum number of entries, default 50'),
     }),
     annotations: {
       readOnlyHint: true,
@@ -343,23 +387,24 @@ export class KnowledgeTools {
     });
   }
 
-  // ── Tool 10: investigate_knowledge_change (Phase 8) ───────────────────
+  // ── Tool 11: investigate_knowledge_change (Phase 8) ───────────────────
 
   @Tool({
     name: 'investigate_knowledge_change',
     description:
-      'Run a complete knowledge integrity investigation. Detects all source changes, traces dependencies, validates claims, finds conflicts, assesses risk, and proposes remediations. Returns a comprehensive report.',
+      'Run a read-only knowledge integrity investigation. Detects all source changes, traces dependencies, validates claims, finds conflicts, and assesses risk. Returns a comprehensive report. This tool is read-only — it never modifies the knowledge base. To propose fixes, call propose_knowledge_update for individual conflicts.',
     inputSchema: z.object({
       source_id: z
         .string()
         .min(1)
+        .max(100)
         .optional()
         .describe(
           'Optional: investigate a specific source. If omitted, investigates ALL changed sources.',
         ),
     }),
     annotations: {
-      readOnlyHint: false,
+      readOnlyHint: true,
       openWorldHint: false,
     },
     invocation: {
@@ -379,13 +424,6 @@ export class KnowledgeTools {
     const affectedDocumentIds = new Set<string>();
     const conflicts: ConflictResult[] = [];
     const riskAssessments: RiskAssessment[] = [];
-    const proposalRequests: { documentId: string; claimId: string }[] = [];
-    const pendingByClaim = new Map(
-      this.remediationService
-        .getPendingUpdates()
-        .filter((update) => update.status === 'AWAITING_APPROVAL')
-        .map((update) => [`${update.document_id}:${update.claim_id}`, update]),
-    );
 
     for (const change of changeResult.changes) {
       const affected = this.dependencyService.findAffectedKnowledge(
@@ -411,21 +449,8 @@ export class KnowledgeTools {
           conflict.claim_id,
         );
         riskAssessments.push(risk);
-
-        const claimKey = `${conflict.document_id}:${conflict.claim_id}`;
-        const existingProposal = pendingByClaim.get(claimKey);
-        if (!existingProposal) {
-          proposalRequests.push({
-            documentId: conflict.document_id,
-            claimId: conflict.claim_id,
-          });
-        }
       }
     }
-
-    const proposedRemediations = this.remediationService.proposeUpdates(
-      proposalRequests,
-    );
 
     return {
       investigation_summary: {
@@ -436,14 +461,12 @@ export class KnowledgeTools {
         critical_risks: riskAssessments.filter(
           (assessment) => assessment.risk_level === 'CRITICAL',
         ).length,
-        // This count intentionally includes only proposals created by this
-        // invocation; already-pending proposals are not new remediations.
-        remediations_proposed: proposedRemediations.length,
+        remediations_proposed: 0,
       },
       changes: changeResult.changes,
       conflicts,
       risk_assessments: riskAssessments,
-      proposed_remediations: proposedRemediations,
+      proposed_remediations: [],
     };
   }
 }

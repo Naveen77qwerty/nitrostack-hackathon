@@ -12,7 +12,6 @@ import { RemediationService } from '../src/services/remediation.service.js';
 import { RiskService } from '../src/services/risk.service.js';
 import { ValidationService } from '../src/services/validation.service.js';
 import { KnowledgePrompts } from '../src/modules/knowledge/knowledge.prompts.js';
-import { KnowledgeResources } from '../src/modules/knowledge/knowledge.resources.js';
 import { KnowledgeTools } from '../src/modules/knowledge/knowledge.tools.js';
 
 const pendingPath = resolve(process.cwd(), 'src/data/pending_updates.json');
@@ -50,8 +49,8 @@ test.after(() => {
   writeFileSync(pendingPath, pendingSnapshot, 'utf8');
 });
 
-test('investigates a changed source, creates proposals once, and exposes pending proposals', async () => {
-  const { loader, tools } = createServices();
+test('investigates a changed source and returns read-only report', async () => {
+  const { tools } = createServices();
   const report = await tools.investigateKnowledgeChange(
     { source_id: 'discount-policy' },
     context,
@@ -63,20 +62,11 @@ test('investigates a changed source, creates proposals once, and exposes pending
     documents_affected: 7,
     conflicts_found: 6,
     critical_risks: 4,
-    remediations_proposed: 6,
+    remediations_proposed: 0,
   });
-  assert.equal(report.proposed_remediations.length, 6);
-
-  const resources = new KnowledgeResources(loader);
-  assert.equal((await resources.getPendingUpdates('knowledge://pending-updates', context)).length, 6);
-
-  const repeated = await tools.investigateKnowledgeChange(
-    { source_id: 'discount-policy' },
-    context,
-  );
-  assert.equal(repeated.investigation_summary.remediations_proposed, 0);
-  assert.equal(repeated.proposed_remediations.length, 0);
-  assert.equal(loader.getPendingUpdates().length, 6);
+  assert.equal(report.proposed_remediations.length, 0);
+  assert.equal(report.conflicts.length, 6);
+  assert.equal(report.risk_assessments.length, 6);
 });
 
 test('keeps proposal persistence atomic when one batch request is invalid', () => {

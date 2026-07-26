@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "main": "dist/index.js",
-  "description": "An enterprise AI platform that identifies repetitive employee workflows across multiple business tools and transforms them into intelligent automations using MCP",
+  "description": "Enterprise Knowledge Integrity MCP Server — detects authoritative knowledge changes, traces document dependencies, finds contradictions, assesses risk, and proposes human-approved remediations.",
   "scripts": {
     "dev": "nitrostack-cli dev",
     "build": "nitrostack-cli build",

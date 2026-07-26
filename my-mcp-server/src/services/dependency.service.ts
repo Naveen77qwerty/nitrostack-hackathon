@@ -187,12 +187,6 @@ export class DependencyService {
     documentId: string,
     claimId: string,
   ): Dependency | undefined {
-    return this.dataLoader
-      .getDependencies()
-      .find(
-        (d) =>
-          d.dependent_document_id === documentId &&
-          d.dependent_claim_id === claimId,
-      );
+    return this.dataLoader.getDependencyForClaim(documentId, claimId);
   }
 }

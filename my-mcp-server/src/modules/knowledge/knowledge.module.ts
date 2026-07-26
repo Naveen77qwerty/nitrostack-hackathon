@@ -11,6 +11,7 @@ import { ProvenanceService } from '../../services/provenance.service.js';
 import { RiskService } from '../../services/risk.service.js';
 import { AuditService } from '../../services/audit.service.js';
 import { RemediationService } from '../../services/remediation.service.js';
+import { ErrorHandlingMiddleware } from '../../middleware/error-handling.middleware.js';
 
 @Module({
   name: 'knowledge-integrity',
@@ -26,6 +27,7 @@ import { RemediationService } from '../../services/remediation.service.js';
     RiskService,
     AuditService,
     RemediationService,
+    ErrorHandlingMiddleware,
   ],
   exports: [
     DataLoaderService,
@@ -37,6 +39,7 @@ import { RemediationService } from '../../services/remediation.service.js';
     RiskService,
     AuditService,
     RemediationService,
+    ErrorHandlingMiddleware,
   ],
 })
 export class KnowledgeIntegrityModule {}

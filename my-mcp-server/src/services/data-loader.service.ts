@@ -257,6 +257,18 @@ export class DataLoaderService {
     return this.documentIndex!.get(documentId);
   }
 
+  /** Find the dependency entry for a specific claim within a document. */
+  getDependencyForClaim(
+    documentId: string,
+    claimId: string,
+  ): Dependency | undefined {
+    return this.getDependencies().find(
+      (d) =>
+        d.dependent_document_id === documentId &&
+        d.dependent_claim_id === claimId,
+    );
+  }
+
   // ── Write operations ─────────────────────────────────────────────────────
 
   /** Overwrite the pending-updates file. */

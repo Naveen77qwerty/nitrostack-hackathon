@@ -4,11 +4,15 @@ import {
   ResourceDecorator as Resource,
 } from '@nitrostack/core';
 import { DataLoaderService } from '../../services/data-loader.service.js';
+import { AuditService } from '../../services/audit.service.js';
 
 /** Read-only MCP resources for browsing the enterprise knowledge base. */
-@Injectable({ deps: [DataLoaderService] })
+@Injectable({ deps: [DataLoaderService, AuditService] })
 export class KnowledgeResources {
-  constructor(private readonly dataLoader: DataLoaderService) {}
+  constructor(
+    private readonly dataLoader: DataLoaderService,
+    private readonly auditService: AuditService,
+  ) {}
 
   @Resource({
     uri: 'knowledge://sources',
@@ -43,5 +47,16 @@ export class KnowledgeResources {
     return this.dataLoader
       .getPendingUpdates()
       .filter((update) => update.status === 'AWAITING_APPROVAL');
+  }
+
+  @Resource({
+    uri: 'knowledge://audit-log',
+    name: 'Audit Log',
+    description: 'History of all approved, rejected, and applied knowledge changes',
+    mimeType: 'application/json',
+    annotations: { audience: ['assistant', 'user'] },
+  })
+  async getAuditLog(_uri: string, _ctx: ExecutionContext) {
+    return this.auditService.getLog({ limit: 100 });
   }
 }

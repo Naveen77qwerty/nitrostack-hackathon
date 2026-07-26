@@ -226,11 +226,7 @@ export class RemediationService {
     if (!claim) {
       throw new KnowledgeInputError(`Unknown claim ${claimId} in document ${documentId}`);
     }
-    const dependency = this.dataLoader.getDependencies().find(
-      (item) =>
-        item.dependent_document_id === documentId &&
-        item.dependent_claim_id === claimId,
-    );
+    const dependency = this.dataLoader.getDependencyForClaim(documentId, claimId);
     if (!dependency) {
       throw new KnowledgeInputError(`Claim has no authoritative dependency: ${claimId}`);
     }

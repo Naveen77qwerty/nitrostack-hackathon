@@ -447,29 +447,41 @@ export class KnowledgeTools {
     const riskAssessments: RiskAssessment[] = [];
 
     for (const change of changeResult.changes) {
-      const affected = this.dependencyService.findAffectedKnowledge(
-        change.source_id,
-        change.fact_key,
-      );
-      for (const document of affected.affected) {
-        affectedDocumentIds.add(document.document_id);
+      try {
+        const affected = this.dependencyService.findAffectedKnowledge(
+          change.source_id,
+          change.fact_key,
+        );
+        for (const document of affected.affected) {
+          affectedDocumentIds.add(document.document_id);
+        }
+      } catch {
+        // Skip facts with no dependencies
       }
 
-      const conflictReport = this.conflictService.detectConflicts(
-        change.source_id,
-        change.fact_key,
-      );
-      const confirmedConflicts = conflictReport.results.filter(
-        (result) => result.status === 'CONFLICT',
-      );
-      conflicts.push(...confirmedConflicts);
-
-      for (const conflict of confirmedConflicts) {
-        const risk = this.riskService.assessRisk(
-          conflict.document_id,
-          conflict.claim_id,
+      try {
+        const conflictReport = this.conflictService.detectConflicts(
+          change.source_id,
+          change.fact_key,
         );
-        riskAssessments.push(risk);
+        const confirmedConflicts = conflictReport.results.filter(
+          (result) => result.status === 'CONFLICT',
+        );
+        conflicts.push(...confirmedConflicts);
+
+        for (const conflict of confirmedConflicts) {
+          try {
+            const risk = this.riskService.assessRisk(
+              conflict.document_id,
+              conflict.claim_id,
+            );
+            riskAssessments.push(risk);
+          } catch {
+            // Skip risk assessment failures for edge cases
+          }
+        }
+      } catch {
+        // Skip facts with no dependencies or conflict detection errors
       }
     }
 

@@ -1,4 +1,4 @@
-import { execSync } from 'child_process';
+import { execFileSync } from 'child_process';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { readdirSync, existsSync } from 'fs';
@@ -7,6 +7,8 @@ import type { AuthoritativeSource } from '../types/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+
+const VALID_CLASSIFICATIONS = ['public', 'internal', 'confidential'] as const;
 
 @Injectable()
 export class PdfIngestionService {
@@ -40,7 +42,9 @@ export class PdfIngestionService {
     for (const file of files) {
       const filePath = join(pdfsDir, file);
       try {
-        const output = execSync(`node -e "${inlineParser.replace(/"/g, '\\"').replace(/\n/g, ' ')}" "${filePath}"`, {
+        // Use execFileSync with argument array to prevent shell injection
+        const scriptContent = inlineParser.replace(/\n/g, ' ');
+        const output = execFileSync('node', ['-e', scriptContent, filePath], {
           encoding: 'utf-8',
         });
         const source = this.parseTextToSource(output, file);
@@ -72,7 +76,11 @@ export class PdfIngestionService {
     
     const owner = this.extractField(lines, 'owner:');
     const last_updated = this.extractField(lines, 'last_updated:');
-    const classification = this.extractField(lines, 'classification:') as any;
+    const rawClassification = this.extractField(lines, 'classification:');
+    const classification: 'public' | 'internal' | 'confidential' =
+      rawClassification && VALID_CLASSIFICATIONS.includes(rawClassification as typeof VALID_CLASSIFICATIONS[number])
+        ? (rawClassification as 'public' | 'internal' | 'confidential')
+        : 'internal';
 
     const facts: Record<string, string> = {};
     
@@ -111,7 +119,7 @@ export class PdfIngestionService {
       metadata: {
         owner: owner || 'Unknown Owner',
         last_updated: last_updated || new Date().toISOString(),
-        classification: classification || 'internal',
+        classification,
       },
     };
   }

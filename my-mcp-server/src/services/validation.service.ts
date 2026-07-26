@@ -37,7 +37,7 @@ export class ValidationService {
         document_title: document.title,
         claim_id: claim.id,
         claim_text: claim.text,
-        depends_on: claim.depends_on ?? '',
+        depends_on: claim.depends_on ?? null,
         authoritative_value: 'unknown',
         status: 'AMBIGUOUS',
         explanation: 'Claim has no authoritative dependency to validate against',

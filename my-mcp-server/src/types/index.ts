@@ -60,7 +60,7 @@ export interface ClaimValidation {
   document_title: string;
   claim_id: string;
   claim_text: string;
-  depends_on: string;
+  depends_on: string | null;
   authoritative_value: string;
   status: ValidationStatus;
   explanation: string;

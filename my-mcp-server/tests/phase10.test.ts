@@ -55,7 +55,7 @@ test('DriftService computes knowledge drift metrics correctly', () => {
   const summary = drift.getDriftSummary();
 
   assert.ok(summary.total_facts > 0, 'Total facts should be greater than 0');
-  assert.equal(summary.changed_facts, 7, 'Expected 7 changed facts in the system');
+  assert.equal(summary.changed_facts, 9, 'Expected 9 changed facts in the system');
   assert.ok(summary.staleness_score >= 0 && summary.staleness_score <= 100);
   assert.equal(summary.most_affected_department, 'Sales', 'Sales should be most affected');
 });

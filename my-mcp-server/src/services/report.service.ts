@@ -163,8 +163,15 @@ export class ReportService {
     // Step 6: Build department breakdown
     const departmentBreakdown = this.getDepartmentBreakdown(department ?? undefined);
 
-    // Step 7: Calculate metrics
-    const appliedCount = auditLog.filter((e) => e.action === 'UPDATE_APPLIED').length;
+    // Step 7: Calculate metrics — scope applied count to the same conflicts
+    const riskyClaimKeys = new Set(
+      riskyConflicts.map((c) => `${c.document_id}:${c.claim_id}`),
+    );
+    const appliedCount = auditLog.filter(
+      (e) =>
+        e.action === 'UPDATE_APPLIED' &&
+        riskyClaimKeys.has(`${e.document_id}:${e.claim_id}`),
+    ).length;
     const outstandingCount = Math.max(0, riskyConflicts.length - appliedCount);
 
     const healthPercentage =

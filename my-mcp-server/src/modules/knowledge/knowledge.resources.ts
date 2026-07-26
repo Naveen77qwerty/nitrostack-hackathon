@@ -175,6 +175,7 @@ export class KnowledgeResources {
     let conflictCount = 0;
     let ambiguousCount = 0;
     const departmentsAffected = new Set<string>();
+    const conflictingClaimIds = new Set<string>();
 
     for (const change of changeResult.changes) {
       try {
@@ -187,13 +188,14 @@ export class KnowledgeResources {
         conflictCount += conflictReport.conflicts;
         ambiguousCount += conflictReport.ambiguous;
 
-        // Track affected departments
+        // Track affected departments and conflicting claims
         for (const result of conflictReport.results) {
           if (result.status === 'CONFLICT') {
             const doc = this.dataLoader.getDocumentById(result.document_id);
             if (doc) {
               departmentsAffected.add(doc.department);
             }
+            conflictingClaimIds.add(`${result.document_id}:${result.claim_id}`);
           }
         }
       } catch {
@@ -201,10 +203,14 @@ export class KnowledgeResources {
       }
     }
 
-    // Remediation velocity
+    // Remediation velocity — scope applied count to currently-detected conflicts
     const pendingUpdates = this.dataLoader.getPendingUpdates();
     const auditLog = this.auditService.getLog({ limit: 500 });
-    const appliedCount = auditLog.filter((e) => e.action === 'UPDATE_APPLIED').length;
+    const appliedCount = auditLog.filter(
+      (e) =>
+        e.action === 'UPDATE_APPLIED' &&
+        conflictingClaimIds.has(`${e.document_id}:${e.claim_id}`),
+    ).length;
     const awaitingCount = pendingUpdates.filter(
       (u) => u.status === 'AWAITING_APPROVAL',
     ).length;

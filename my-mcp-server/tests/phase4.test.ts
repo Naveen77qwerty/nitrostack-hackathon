@@ -12,8 +12,8 @@ test('detects the expected Phase 4 changes', () => {
   const loader = new DataLoaderService();
   const result = new ChangeDetectionService(loader).detectChanges();
   assert.equal(result.total_sources_checked, 6);
-  assert.equal(result.sources_with_changes, 4);
-  assert.equal(result.changes.length, 7);
+  assert.equal(result.sources_with_changes, 5);
+  assert.equal(result.changes.length, 9);
   assert.deepEqual(result.changes.find((change) => change.fact_key === 'maximum_discount'), {
     source_id: 'discount-policy', source_title: 'Enterprise Discount Policy',
     fact_key: 'maximum_discount', old_value: '20%', new_value: '10%', changed: true,

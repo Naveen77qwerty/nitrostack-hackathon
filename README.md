@@ -85,6 +85,17 @@ The LLM discovers the MCP tools and performs:
 
 The server follows the principle that **the MCP server provides evidence, and the LLM provides reasoning**. The server computes deterministic results (change detection, value matching, risk scoring). The LLM interprets results and communicates them to the user in natural language. This separation ensures consistency and reproducibility while leveraging the LLM's strength in natural language understanding.
 
+### Enterprise Data Architecture Rationale (Versioned Fact Registry vs. Unstructured RAG)
+
+In enterprise environments, policy compliance cannot rely on fuzzy vector search or unstructured RAG (Retrieval-Augmented Generation). Vector embeddings frequently suffer from semantic similarity confusion (e.g., treating "20% maximum discount" and "10% maximum discount" as highly similar text chunks without identifying the contradiction).
+
+To solve this, this MCP server models enterprise knowledge as a **Canonical Versioned Fact Registry**:
+- **Authoritative Fact Precision:** Authoritative policies (e.g., Workday HR policies, SAP pricing rules, Legal compliance mandates) are stored as explicit versioned key-value facts (`v1` vs `v2`).
+- **100% Deterministic Verification:** Claim validation uses explicit fact comparison rather than non-deterministic similarity thresholds.
+- **Enterprise System Interoperability:** Systems of record (SAP, ServiceNow, Notion DBs, Workday) sync directly into this canonical JSON schema via API webhooks.
+- **Raw Policy Alignment:** Sample enterprise source documents (PDF/Markdown policies) and mapping specifications are provided in the `/samples` directory. See [samples/enterprise-ingestion-spec.md](file:///home/chifuyu/College/Hackathons/Nitrostack/nitrostack-hackathon/my-mcp-server/samples/enterprise-ingestion-spec.md) for full ingestion architecture details.
+
+
 ---
 
 ## Features

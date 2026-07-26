@@ -149,9 +149,10 @@ import { Module } from '@nitrostack/core';
 export class MyModule {}
 ```
 
-### No external APIs needed
+### Enterprise Canonical Fact Architecture
 
-This project uses **only synthetic JSON data**. No GitHub tokens, no Jira API, no Slack integration. The entire knowledge base is self-contained in JSON files within the project. This makes the demo 100% reliable and reproducible.
+This project uses a **Canonical Versioned Fact Registry** (`authoritative_sources.json`) rather than unstructured vector RAG chunks. In enterprise environments, policy compliance requires 100% deterministic value comparison (e.g. 20% vs 10% maximum discount) rather than fuzzy cosine similarity. System connectors (SAP, Workday, ServiceNow, Notion DBs) stream policy updates directly into this canonical JSON schema. Sample source documents and ingestion specifications are documented in `samples/enterprise-ingestion-spec.md`.
+
 
 ---
 

@@ -158,11 +158,12 @@ function writeJson<T>(filename: string, data: T): void {
 }
 
 // ---------------------------------------------------------------------------
-// DataLoaderService
-// ---------------------------------------------------------------------------
+import { PdfIngestionService } from './pdf-ingestion.service.js';
 
-@Injectable()
+@Injectable({ deps: [PdfIngestionService] })
 export class DataLoaderService {
+  constructor(private readonly pdfIngestionService: PdfIngestionService = new PdfIngestionService()) {}
+
   private authoritativeSources?: AuthoritativeSource[];
   private previousSources?: AuthoritativeSource[];
   private documents?: Document[];
@@ -178,7 +179,10 @@ export class DataLoaderService {
   /** Current (v2) authoritative sources — the ground truth. */
   getAuthoritativeSources(): AuthoritativeSource[] {
     if (!this.authoritativeSources) {
-      this.authoritativeSources = readJson('authoritative_sources.json', z.array(sourceSchema));
+      const jsonSources = readJson('authoritative_sources.json', z.array(sourceSchema));
+      const pdfSources = this.pdfIngestionService.loadPdfSources(join(DATA_DIR, 'pdfs'));
+      
+      this.authoritativeSources = [...jsonSources, ...pdfSources];
       this.sourceIndex = buildUniqueIndex(this.authoritativeSources, 'authoritative source');
       this.validateReferences();
     }

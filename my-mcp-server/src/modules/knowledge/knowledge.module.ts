@@ -15,12 +15,14 @@ import { DriftService } from '../../services/drift.service.js';
 import { ReportService } from '../../services/report.service.js';
 import { BatchService } from '../../services/batch.service.js';
 import { ErrorHandlingMiddleware } from '../../middleware/error-handling.middleware.js';
+import { PdfIngestionService } from '../../services/pdf-ingestion.service.js';
 
 @Module({
   name: 'knowledge-integrity',
   description: 'Enterprise knowledge integrity — change detection, dependency traversal, conflict detection, risk scoring, remediation, and audit.',
   controllers: [KnowledgeTools, KnowledgeResources, KnowledgePrompts],
   providers: [
+    PdfIngestionService,
     DataLoaderService,
     DependencyService,
     ChangeDetectionService,

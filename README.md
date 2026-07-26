@@ -163,11 +163,11 @@ The investigation tool (`investigate_knowledge_change`) and `RemediationService.
 
 ### MCP Resources
 
-Three read-only resources expose the knowledge base for LLM browsing: authoritative sources, enterprise documents, and pending updates. These allow the LLM to explore the data without calling tools.
+Seven read-only resources expose the knowledge base for LLM browsing: authoritative sources, enterprise documents, pending updates, audit log, dependency graph, health metrics, and source owners directory. These allow the LLM to explore data without calling tools.
 
 ### MCP Prompts
 
-Two prompt templates guide the LLM through established investigation workflows: `investigate_policy_change` (scoped to a specific policy or all changes) and `knowledge_health_check` (comprehensive audit of all knowledge consistency).
+Seven prompt templates guide the LLM through established investigation and remediation workflows: `investigate_policy_change`, `knowledge_health_check`, `compliance_audit_report`, `department_knowledge_review`, `remediation_planning`, `executive_knowledge_briefing`, and `rollback_assessment`.
 
 ---
 
@@ -184,7 +184,7 @@ graph TB
         App["AppModule"]
         KM["KnowledgeIntegrityModule"]
         
-        subgraph Tools["MCP Tools (10)"]
+        subgraph Tools["MCP Tools (14)"]
             T1["detect_source_changes"]
             T2["find_affected_knowledge"]
             T3["validate_claim"]
@@ -193,19 +193,32 @@ graph TB
             T6["assess_knowledge_risk"]
             T7["propose_knowledge_update"]
             T8["approve_knowledge_update"]
-            T9["get_audit_log"]
-            T10["investigate_knowledge_change"]
+            T9["reject_knowledge_update"]
+            T10["get_audit_log"]
+            T11["investigate_knowledge_change"]
+            T12["batch_approve_updates"]
+            T13["generate_compliance_report"]
+            T14["get_knowledge_drift_summary"]
         end
         
-        subgraph Resources["MCP Resources (3)"]
+        subgraph Resources["MCP Resources (7)"]
             R1["knowledge://sources"]
             R2["knowledge://documents"]
             R3["knowledge://pending-updates"]
+            R4["knowledge://audit-log"]
+            R5["knowledge://dependency-graph"]
+            R6["knowledge://health-metrics"]
+            R7["knowledge://source-owners"]
         end
         
-        subgraph Prompts["MCP Prompts (2)"]
+        subgraph Prompts["MCP Prompts (7)"]
             P1["investigate_policy_change"]
             P2["knowledge_health_check"]
+            P3["compliance_audit_report"]
+            P4["department_knowledge_review"]
+            P5["remediation_planning"]
+            P6["executive_knowledge_briefing"]
+            P7["rollback_assessment"]
         end
         
         subgraph Services["Services Layer"]
@@ -218,6 +231,9 @@ graph TB
             RS["RiskService"]
             RMS["RemediationService"]
             AS["AuditService"]
+            DFS["DriftService"]
+            RPS["ReportService"]
+            BTS["BatchService"]
         end
     end
     
@@ -266,6 +282,9 @@ graph LR
     KIM -->|"providers"| RS["RiskService"]
     KIM -->|"providers"| AS["AuditService"]
     KIM -->|"providers"| RMS["RemediationService"]
+    KIM -->|"providers"| DFS["DriftService"]
+    KIM -->|"providers"| RPS["ReportService"]
+    KIM -->|"providers"| BTS["BatchService"]
 ```
 
 ### Request Flow
@@ -644,14 +663,17 @@ my-mcp-server/
 │   │   ├── provenance.service.ts             # Knowledge origin tracing
 │   │   ├── risk.service.ts                   # Deterministic risk scoring
 │   │   ├── remediation.service.ts            # Proposal creation and approval
-│   │   └── audit.service.ts                  # Audit trail management
+│   │   ├── audit.service.ts                  # Audit trail management
+│   │   ├── drift.service.ts                  # Knowledge staleness and drift metrics
+│   │   ├── report.service.ts                 # Department compliance report generation
+│   │   └── batch.service.ts                  # Risk-ceiling enforced batch approvals
 │   │
 │   ├── modules/
 │   │   └── knowledge/                        # MCP module
 │   │       ├── knowledge.module.ts           # Module registration + DI wiring
-│   │       ├── knowledge.tools.ts            # 10 MCP tool handlers
-│   │       ├── knowledge.resources.ts        # 3 MCP resources
-│   │       └── knowledge.prompts.ts          # 2 MCP prompts
+│   │       ├── knowledge.tools.ts            # 14 MCP tool handlers
+│   │       ├── knowledge.resources.ts        # 7 MCP resources
+│   │       └── knowledge.prompts.ts          # 7 MCP prompts
 │   │
 │   └── widgets/                              # Optional UI widgets (out of scope)
 │
@@ -659,7 +681,8 @@ my-mcp-server/
 │   ├── phase4.test.ts                        # Core services: detection, dependency, validation
 │   ├── phase7.test.ts                        # Remediation: propose, approve, audit
 │   ├── phase8.test.ts                        # Investigation tool, batch ops, prompts
-│   └── phase9.test.ts                        # MCP client connection verification
+│   ├── phase9.test.ts                        # MCP client connection verification
+│   └── phase10.test.ts                       # Drift, compliance reports, batch safety
 │
 ├── examples/
 │   └── claude-desktop.config.json            # Claude Desktop MCP configuration
@@ -716,16 +739,16 @@ my-mcp-server/
 
 **Responsibilities:**
 - Registers 3 controllers: `KnowledgeTools`, `KnowledgeResources`, `KnowledgePrompts`
-- Provides 9 services with dependency injection
+- Provides 12 services with dependency injection
 - Exports all services for use by other modules (if needed)
 
 **Controllers:**
 
 | Controller | Type | Count |
 |-----------|------|-------|
-| `KnowledgeTools` | Tool handler | 10 tools |
-| `KnowledgeResources` | Resource provider | 3 resources |
-| `KnowledgePrompts` | Prompt template | 2 prompts |
+| `KnowledgeTools` | Tool handler | 14 tools |
+| `KnowledgeResources` | Resource provider | 7 resources |
+| `KnowledgePrompts` | Prompt template | 7 prompts |
 
 **Providers (Services):**
 
@@ -740,6 +763,9 @@ my-mcp-server/
 | `RiskService` | `DataLoaderService`, `ValidationService` |
 | `AuditService` | `DataLoaderService` |
 | `RemediationService` | `DataLoaderService`, `AuditService`, `RiskService`, `ValidationService` |
+| `DriftService` | `DataLoaderService`, `ChangeDetectionService`, `DependencyService`, `ConflictService`, `RiskService` |
+| `ReportService` | `DataLoaderService`, `ChangeDetectionService`, `ConflictService`, `RiskService`, `AuditService`, `ValidationService` |
+| `BatchService` | `RemediationService` |
 
 ---
 
@@ -1044,6 +1070,64 @@ return min(score, 100)
 - Empty `documentId` or negative/non-integer `limit` throws `KnowledgeInputError`
 
 **Complexity:** O(1) for recording, O(n) for filtering.
+
+---
+
+### DriftService
+
+**File:** `src/services/drift.service.ts`
+
+**Purpose:** Computes live enterprise-wide knowledge drift, staleness scores, and remediation velocity.
+
+**Methods:**
+
+| Method | Input | Output | Description |
+|--------|-------|--------|-------------|
+| `getDriftSummary()` | none | `KnowledgeDriftSummary` | Computes overall staleness KPI, total facts, changed count, and department impact |
+
+**Behavior:**
+- Scans all authoritative sources to detect total and changed facts
+- Traverses dependency graph to find affected claims and compute open conflicts
+- Calculates `staleness_score` as `(changedFacts / totalFacts) * 100`
+- Identifies `most_affected_department` based on total open conflicts per department
+
+---
+
+### ReportService
+
+**File:** `src/services/report.service.ts`
+
+**Purpose:** Generates comprehensive compliance audit reports with optional department-level scoping and risk thresholds.
+
+**Methods:**
+
+| Method | Input | Output | Description |
+|--------|-------|--------|-------------|
+| `generateComplianceReport(options)` | `ComplianceReportOptions` | `ComplianceReport` | Generates a structured compliance audit report |
+
+**Behavior:**
+- Filters report findings by department name and minimum risk level (`CRITICAL`, `HIGH`, `MEDIUM`, `LOW`) if specified
+- Groups conflicts by department and details outstanding risk items
+- Returns actionable audit recommendations for organizational leads
+
+---
+
+### BatchService
+
+**File:** `src/services/batch.service.ts`
+
+**Purpose:** Handles bulk proposal approval with safety guards enforcing maximum risk ceilings.
+
+**Methods:**
+
+| Method | Input | Output | Description |
+|--------|-------|--------|-------------|
+| `batchApprove(proposalIds, riskCeiling?, reason?)` | `string[], RiskLevel?, string` | `BatchApprovalResult` | Approves multiple updates in bulk while skipping proposals exceeding the risk ceiling |
+
+**Behavior:**
+- Inspects each proposal in `proposalIds`
+- Compares proposal `risk_level` against optional `riskCeiling`
+- Approves and applies valid proposals under the risk ceiling while recording skipped proposals with explicit safety reasons
 
 ---
 
@@ -1855,6 +1939,82 @@ return min(score, 100)
 
 ---
 
+### Tool 11: `reject_knowledge_update`
+
+**Purpose:** Reject a proposed knowledge update with an optional reason.
+
+**When to use:** When a reviewer declines to apply a proposed remediation plan.
+
+**Input Schema:**
+
+```json
+{
+  "proposal_id": "string (required)",
+  "reason": "string (optional)"
+}
+```
+
+**Annotations:** `readOnlyHint: false`, `openWorldHint: false`
+
+---
+
+### Tool 12: `batch_approve_updates`
+
+**Purpose:** Batch approve multiple pending updates with safety controls and optional risk ceiling filtering.
+
+**When to use:** To process multiple remediation proposals at once safely without exceeding organizational risk tolerance.
+
+**Input Schema:**
+
+```json
+{
+  "proposal_ids": "string[] (required)",
+  "risk_ceiling": "CRITICAL | HIGH | MEDIUM | LOW (optional)",
+  "reason": "string (optional)"
+}
+```
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `proposal_ids` | `string[]` | Yes | List of proposal IDs to approve |
+| `risk_ceiling` | `string` | No | Maximum risk level to approve (`CRITICAL`, `HIGH`, `MEDIUM`, `LOW`). Higher risk proposals are safely skipped. |
+| `reason` | `string` | No | Audit approval reason |
+
+**Annotations:** `readOnlyHint: false`, `openWorldHint: false`
+
+---
+
+### Tool 13: `generate_compliance_report`
+
+**Purpose:** Generate a detailed compliance audit report filtered by department and minimum risk level.
+
+**When to use:** For executive reporting, departmental compliance reviews, or audit documentation.
+
+**Input Schema:**
+
+```json
+{
+  "department": "string (optional)",
+  "min_risk_level": "CRITICAL | HIGH | MEDIUM | LOW (optional)"
+}
+```
+
+**Annotations:** `readOnlyHint: true`, `openWorldHint: false`
+
+---
+
+### Tool 14: `get_knowledge_drift_summary`
+
+**Purpose:** Retrieve overall enterprise knowledge base drift, staleness metrics, and remediation velocity.
+
+**When to use:** To assess organizational knowledge health and overall drift KPIs.
+
+**Input Schema:** None.
+
+**Annotations:** `readOnlyHint: true`, `openWorldHint: false`
+
+---
+
 ## MCP Resources
 
 ### `knowledge://sources`
@@ -1875,7 +2035,7 @@ Returns the complete array of current (v2) authoritative sources. Each source in
 **Description:** All enterprise documents with their claims and dependencies
 **MIME Type:** `application/json`
 
-Returns all 23 enterprise documents. Each document includes its ID, title, department, type, last reviewed date, criticality, customer-facing flag, and array of claims (each with text, dependency reference, and section).
+Returns all 23 enterprise documents. Each document includes its ID, title, department, type, last reviewed date, criticality, customer-facing flag, owner, and array of claims (each with text, dependency reference, and section).
 
 **Audience:** `['assistant', 'user']`
 
@@ -1893,6 +2053,54 @@ Returns only proposals with status `AWAITING_APPROVAL`. Each proposal includes d
 
 ---
 
+### `knowledge://audit-log`
+
+**Name:** Audit Log
+**Description:** Historical record of approved, applied, and rejected knowledge changes
+**MIME Type:** `application/json`
+
+Returns the complete audit log array detailing all applied updates, approvals, rejections, reasons, timestamps, and associated risk levels.
+
+**Audience:** `['assistant', 'user']`
+
+---
+
+### `knowledge://dependency-graph`
+
+**Name:** Dependency Graph Topology
+**Description:** Complete topological mapping from authoritative sources and facts to dependent document claims
+**MIME Type:** `application/json`
+
+Exposes the dependency graph structure allowing LLMs to analyze structural knowledge relationships and calculate total fan-out blast radius across documents.
+
+**Audience:** `['assistant', 'user']`
+
+---
+
+### `knowledge://health-metrics`
+
+**Name:** Knowledge Base Health Metrics
+**Description:** Live computed knowledge base staleness KPI, open conflict metrics, and department health breakdown
+**MIME Type:** `application/json`
+
+Computes overall staleness percentage, total fact changes, unresolved conflict totals, and affected department metrics in real-time.
+
+**Audience:** `['assistant', 'user']`
+
+---
+
+### `knowledge://source-owners`
+
+**Name:** Authoritative Source & Document Owners Directory
+**Description:** Directory of authoritative policy owners, department contacts, and governance metadata
+**MIME Type:** `application/json`
+
+Maps policy facts and enterprise documents to their respective owners (`VP Sales Operations`, `General Counsel`, `CISO`, `Finance Director`) for automated escalation and routing.
+
+**Audience:** `['assistant', 'user']`
+
+---
+
 ## MCP Prompts
 
 ### `investigate_policy_change`
@@ -1905,17 +2113,6 @@ Returns only proposals with status `AWAITING_APPROVAL`. Each proposal includes d
 |------|----------|-------------|
 | `policy` | No | The policy or source that changed (by name or ID) |
 
-**Behavior:**
-- If `policy` is provided, resolves it to an authoritative source ID (by exact ID match or case-insensitive title match)
-- Generates a user message instructing the LLM to use the tools in sequence
-- If the source is unknown, throws `KnowledgeInputError`
-
-**Generated prompt (with policy):**
-> "Focus on authoritative source ID `discount-policy`. First call detect_source_changes with source_id set to `discount-policy`. Investigate its impact using the knowledge-integrity MCP tools..."
-
-**Generated prompt (without policy):**
-> "Start by identifying every changed authoritative source. Investigate its impact using the knowledge-integrity MCP tools..."
-
 ---
 
 ### `knowledge_health_check`
@@ -1924,8 +2121,62 @@ Returns only proposals with status `AWAITING_APPROVAL`. Each proposal includes d
 
 **Arguments:** None
 
-**Generated prompt:**
-> "Run a comprehensive enterprise knowledge health check. Call detect_source_changes with no source_id. For every changed fact, use find_affected_knowledge and detect_knowledge_conflicts, then assess_knowledge_risk for each confirmed conflict. Trace provenance for the highest-risk claims. Report the number of changed facts, affected documents, conflicts by status, risk levels, and recommended remediations. Do not apply any update without explicit user approval."
+---
+
+### `compliance_audit_report`
+
+**Description:** Orchestrate a department-scoped compliance audit report with risk filtering
+
+**Arguments:**
+
+| Name | Required | Description |
+|------|----------|-------------|
+| `department` | No | Target department to scope the compliance report |
+| `min_risk_level` | No | Minimum risk threshold (`CRITICAL`, `HIGH`, `MEDIUM`, `LOW`) |
+
+---
+
+### `department_knowledge_review`
+
+**Description:** Perform a focused review of conflicting claims for a specific department head
+
+**Arguments:**
+
+| Name | Required | Description |
+|------|----------|-------------|
+| `department` | Yes | Department name (e.g., `"Sales"`, `"Finance"`, `"Legal"`) |
+
+---
+
+### `remediation_planning`
+
+**Description:** Draft a remediation plan mapping open conflicts to document owners and proposing fixes
+
+**Arguments:**
+
+| Name | Required | Description |
+|------|----------|-------------|
+| `min_risk_level` | No | Minimum risk level to include in the plan |
+
+---
+
+### `executive_knowledge_briefing`
+
+**Description:** Generate a high-level executive summary on overall knowledge health and staleness metrics
+
+**Arguments:** None
+
+---
+
+### `rollback_assessment`
+
+**Description:** Assess potential blast radius and risks before reverting changes to an authoritative policy
+
+**Arguments:**
+
+| Name | Required | Description |
+|------|----------|-------------|
+| `source_id` | Yes | Authoritative source ID to assess for rollback |
 
 ---
 
@@ -2597,6 +2848,9 @@ npm run test:phase8
 
 # Phase 9: MCP client connection verification (requires build first)
 npm run test:phase9
+
+# Phase 10: Drift, compliance reports, batch safety
+npm run test:phase10
 ```
 
 ### Running with NitroStudio
@@ -2604,8 +2858,8 @@ npm run test:phase9
 1. Run `npm run dev`
 2. Open NitroStudio
 3. Select the project
-4. Verify all 10 tools appear in the tools list
-5. Confirm the 3 resources and 2 prompts are discoverable
+4. Verify all 14 tools appear in the tools list
+5. Confirm the 7 resources and 7 prompts are discoverable
 
 ### Running with Claude Desktop
 
@@ -2857,7 +3111,7 @@ flowchart TD
     ENV --> BOOT["McpApplicationFactory.create(AppModule)"]
     BOOT --> DI["Resolve DI container"]
     DI --> MOD["Initialize KnowledgeIntegrityModule"]
-    MOD --> SVC["Instantiate all 9 services"]
+    MOD --> SVC["Instantiate all 12 services"]
     SVC --> DL["DataLoaderService: Load + validate JSON files"]
     DL --> IDX["Build Map indexes for O(1) lookups"]
     IDX --> REF["Validate cross-references"]

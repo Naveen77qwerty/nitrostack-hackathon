@@ -11,3 +11,12 @@ export { RiskService, calculateRiskScore, riskLevel } from './risk.service.js';
 export { AuditService } from './audit.service.js';
 export { RemediationService } from './remediation.service.js';
 export type { ProposedUpdateRequest } from './remediation.service.js';
+
+// Phase 10 — New services for production workflows
+export { DriftService } from './drift.service.js';
+export type { DriftSummary, SourceDrift } from './drift.service.js';
+export { ReportService } from './report.service.js';
+export type { ComplianceReport, DepartmentHealth } from './report.service.js';
+export { BatchService } from './batch.service.js';
+export type { BatchApproveResult } from './batch.service.js';
+

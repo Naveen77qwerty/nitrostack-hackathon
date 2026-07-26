@@ -72,6 +72,7 @@ const documentSchema = z.object({
   last_reviewed: z.string().min(1),
   criticality: z.enum(['low', 'medium', 'high', 'critical']),
   customer_facing: z.boolean(),
+  owner: z.string().optional(),
   claims: z.array(claimSchema),
 });
 

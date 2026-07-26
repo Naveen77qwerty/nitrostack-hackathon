@@ -34,24 +34,24 @@ test('MCP server boots without errors', async () => {
   assert.ok(true, 'Server started successfully');
 });
 
-test('Server exposes expected tool count (11 tools)', async () => {
+test('Server exposes expected tool count (14 tools)', async () => {
   assert.ok(server, 'Server should exist');
-  // The server should have all 11 tools registered
+  // The server should have all 14 tools registered
   // We verify by checking that the server instance is valid and started
   // Full tool listing requires MCP client protocol which is tested via
   // manual integration with Claude Desktop or similar MCP clients
   assert.ok(server, 'Server instance is valid');
 });
 
-test('Server exposes expected resource count (4 resources)', () => {
+test('Server exposes expected resource count (7 resources)', () => {
   assert.ok(server, 'Server should exist');
-  // 4 resources: sources, documents, pending-updates, audit-log
+  // 7 resources: sources, documents, pending-updates, audit-log, dependency-graph, health-metrics, source-owners
   assert.ok(server, 'Server instance is valid');
 });
 
-test('Server exposes expected prompt count (2 prompts)', () => {
+test('Server exposes expected prompt count (7 prompts)', () => {
   assert.ok(server, 'Server should exist');
-  // 2 prompts: investigate_policy_change, knowledge_health_check
+  // 7 prompts: investigate_policy_change, knowledge_health_check, compliance_audit_report, department_knowledge_review, remediation_planning, executive_knowledge_briefing, rollback_assessment
   assert.ok(server, 'Server instance is valid');
 });
 

@@ -11,6 +11,9 @@ import { ProvenanceService } from '../../services/provenance.service.js';
 import { RiskService } from '../../services/risk.service.js';
 import { AuditService } from '../../services/audit.service.js';
 import { RemediationService } from '../../services/remediation.service.js';
+import { DriftService } from '../../services/drift.service.js';
+import { ReportService } from '../../services/report.service.js';
+import { BatchService } from '../../services/batch.service.js';
 import { ErrorHandlingMiddleware } from '../../middleware/error-handling.middleware.js';
 
 @Module({
@@ -27,6 +30,9 @@ import { ErrorHandlingMiddleware } from '../../middleware/error-handling.middlew
     RiskService,
     AuditService,
     RemediationService,
+    DriftService,
+    ReportService,
+    BatchService,
     ErrorHandlingMiddleware,
   ],
   exports: [
@@ -39,7 +45,11 @@ import { ErrorHandlingMiddleware } from '../../middleware/error-handling.middlew
     RiskService,
     AuditService,
     RemediationService,
+    DriftService,
+    ReportService,
+    BatchService,
     ErrorHandlingMiddleware,
   ],
 })
 export class KnowledgeIntegrityModule {}
+

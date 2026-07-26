@@ -14,6 +14,10 @@ import { ValidationService } from '../src/services/validation.service.js';
 import { KnowledgePrompts } from '../src/modules/knowledge/knowledge.prompts.js';
 import { KnowledgeTools } from '../src/modules/knowledge/knowledge.tools.js';
 
+import { DriftService } from '../src/services/drift.service.js';
+import { ReportService } from '../src/services/report.service.js';
+import { BatchService } from '../src/services/batch.service.js';
+
 const pendingPath = resolve(process.cwd(), 'src/data/pending_updates.json');
 let pendingSnapshot = '';
 
@@ -28,15 +32,26 @@ function createServices() {
   const risk = new RiskService(loader, validation);
   const audit = new AuditService(loader);
   const remediation = new RemediationService(loader, audit, risk, validation);
+  
+  const changeDetection = new ChangeDetectionService(loader);
+  const conflict = new ConflictService(loader, dependency, validation);
+  
+  const drift = new DriftService(loader, changeDetection, dependency, conflict, risk);
+  const report = new ReportService(loader, changeDetection, conflict, risk, audit, validation);
+  const batch = new BatchService(loader, remediation);
+
   const tools = new KnowledgeTools(
-    new ChangeDetectionService(loader),
+    changeDetection,
     dependency,
     validation,
-    new ConflictService(loader, dependency, validation),
+    conflict,
     new ProvenanceService(loader, validation),
     risk,
     remediation,
     audit,
+    drift,
+    report,
+    batch,
   );
   return { loader, remediation, tools };
 }

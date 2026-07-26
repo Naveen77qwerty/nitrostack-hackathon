@@ -22,6 +22,7 @@ export interface Document {
   last_reviewed: string;             // ISO date
   criticality: 'low' | 'medium' | 'high' | 'critical';
   customer_facing: boolean;
+  owner?: string;                    // e.g., "VP Sales Operations" — for remediation routing
   claims: Claim[];
 }
 

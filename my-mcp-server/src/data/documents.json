@@ -7,6 +7,7 @@
     "last_reviewed": "2025-02-10",
     "criticality": "critical",
     "customer_facing": true,
+    "owner": "VP Sales Operations",
     "claims": [
       {
         "id": "sales-playbook.claim-1",
@@ -30,6 +31,7 @@
     "last_reviewed": "2025-01-15",
     "criticality": "critical",
     "customer_facing": true,
+    "owner": "VP Sales Operations",
     "claims": [
       {
         "id": "proposal-template.claim-1",
@@ -47,6 +49,7 @@
     "last_reviewed": "2026-06-02",
     "criticality": "high",
     "customer_facing": false,
+    "owner": "Finance Director",
     "claims": [
       {
         "id": "pricing-guide.claim-1",
@@ -70,6 +73,7 @@
     "last_reviewed": "2025-03-01",
     "criticality": "medium",
     "customer_facing": false,
+    "owner": "VP Sales Operations",
     "claims": [
       {
         "id": "sales-training.claim-1",
@@ -87,6 +91,7 @@
     "last_reviewed": "2025-04-10",
     "criticality": "high",
     "customer_facing": false,
+    "owner": "VP Sales Operations",
     "claims": [
       {
         "id": "discount-approval-sop.claim-1",
@@ -104,6 +109,7 @@
     "last_reviewed": "2025-01-20",
     "criticality": "critical",
     "customer_facing": true,
+    "owner": "General Counsel",
     "claims": [
       {
         "id": "partner-agreement.claim-1",
@@ -121,6 +127,7 @@
     "last_reviewed": "2026-06-10",
     "criticality": "high",
     "customer_facing": true,
+    "owner": "Chief of Staff",
     "claims": [
       {
         "id": "quarterly-review-deck.claim-1",
@@ -138,6 +145,7 @@
     "last_reviewed": "2024-07-01",
     "criticality": "critical",
     "customer_facing": false,
+    "owner": "VP Engineering",
     "claims": [
       {
         "id": "data-handling-guide.claim-1",
@@ -155,6 +163,7 @@
     "last_reviewed": "2024-08-15",
     "criticality": "high",
     "customer_facing": true,
+    "owner": "VP Customer Support",
     "claims": [
       {
         "id": "privacy-faq.claim-1",
@@ -172,6 +181,7 @@
     "last_reviewed": "2026-05-20",
     "criticality": "critical",
     "customer_facing": false,
+    "owner": "General Counsel",
     "claims": [
       {
         "id": "compliance-checklist.claim-1",
@@ -195,6 +205,7 @@
     "last_reviewed": "2024-02-15",
     "criticality": "medium",
     "customer_facing": false,
+    "owner": "HR Director",
     "claims": [
       {
         "id": "remote-work-guide.claim-1",
@@ -212,6 +223,7 @@
     "last_reviewed": "2024-03-01",
     "criticality": "medium",
     "customer_facing": false,
+    "owner": "HR Director",
     "claims": [
       {
         "id": "onboarding-handbook.claim-1",
@@ -229,6 +241,7 @@
     "last_reviewed": "2024-03-10",
     "criticality": "low",
     "customer_facing": false,
+    "owner": "IT Director",
     "claims": [
       {
         "id": "it-setup-guide.claim-1",
@@ -246,6 +259,7 @@
     "last_reviewed": "2025-05-01",
     "criticality": "high",
     "customer_facing": false,
+    "owner": "Procurement Manager",
     "claims": [
       {
         "id": "vendor-onboarding.claim-1",
@@ -263,6 +277,7 @@
     "last_reviewed": "2025-11-10",
     "criticality": "medium",
     "customer_facing": false,
+    "owner": "Procurement Manager",
     "claims": [
       {
         "id": "procurement-sop.claim-1",
@@ -280,6 +295,7 @@
     "last_reviewed": "2025-07-01",
     "criticality": "high",
     "customer_facing": false,
+    "owner": "CISO",
     "claims": [
       {
         "id": "security-training.claim-1",
@@ -297,6 +313,7 @@
     "last_reviewed": "2025-08-01",
     "criticality": "medium",
     "customer_facing": false,
+    "owner": "CISO",
     "claims": [
       {
         "id": "security-quickstart.claim-1",
@@ -314,6 +331,7 @@
     "last_reviewed": "2026-06-16",
     "criticality": "critical",
     "customer_facing": false,
+    "owner": "CISO",
     "claims": [
       {
         "id": "incident-response.claim-1",
@@ -331,6 +349,7 @@
     "last_reviewed": "2026-03-15",
     "criticality": "medium",
     "customer_facing": false,
+    "owner": "Finance Director",
     "claims": [
       {
         "id": "travel-guidelines.claim-1",
@@ -348,6 +367,7 @@
     "last_reviewed": "2026-03-20",
     "criticality": "low",
     "customer_facing": false,
+    "owner": "Finance Director",
     "claims": [
       {
         "id": "expense-faq.claim-1",
@@ -365,6 +385,7 @@
     "last_reviewed": "2026-01-01",
     "criticality": "low",
     "customer_facing": true,
+    "owner": "Chief of Staff",
     "claims": [
       {
         "id": "company-values.claim-1",
@@ -382,6 +403,7 @@
     "last_reviewed": "2026-02-01",
     "criticality": "medium",
     "customer_facing": true,
+    "owner": "VP Marketing",
     "claims": [
       {
         "id": "brand-guidelines.claim-1",
@@ -399,6 +421,7 @@
     "last_reviewed": "2026-01-15",
     "criticality": "medium",
     "customer_facing": false,
+    "owner": "VP Engineering",
     "claims": [
       {
         "id": "engineering-standards.claim-1",

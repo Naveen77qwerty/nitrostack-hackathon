@@ -7,6 +7,9 @@ import { ProvenanceService } from '../../services/provenance.service.js';
 import { RiskService } from '../../services/risk.service.js';
 import { RemediationService } from '../../services/remediation.service.js';
 import { AuditService } from '../../services/audit.service.js';
+import { DriftService } from '../../services/drift.service.js';
+import { ReportService } from '../../services/report.service.js';
+import { BatchService } from '../../services/batch.service.js';
 import type {
   ConflictResult,
   InvestigationReport,
@@ -31,6 +34,9 @@ import type {
     RiskService,
     RemediationService,
     AuditService,
+    DriftService,
+    ReportService,
+    BatchService,
   ],
 })
 export class KnowledgeTools {
@@ -43,6 +49,9 @@ export class KnowledgeTools {
     private readonly riskService: RiskService,
     private readonly remediationService: RemediationService,
     private readonly auditService: AuditService,
+    private readonly driftService: DriftService,
+    private readonly reportService: ReportService,
+    private readonly batchService: BatchService,
   ) {}
 
   // ── Tool 1: detect_source_changes ───────────────────────────────────────
@@ -468,5 +477,151 @@ export class KnowledgeTools {
       risk_assessments: riskAssessments,
       proposed_remediations: [],
     };
+  }
+
+  // ── Tool 12: batch_approve_updates ──────────────────────────────────────
+
+  /**
+   * Approve multiple pending proposals in a single call, with an optional
+   * risk ceiling that automatically skips proposals above the threshold.
+   */
+  @Tool({
+    name: 'batch_approve_updates',
+    description:
+      'Approve multiple pending knowledge update proposals in a single call. Supports a risk_ceiling to automatically skip proposals above a given risk level (e.g. set risk_ceiling to "MEDIUM" to only approve LOW and MEDIUM risk proposals). Proposals that are stale, already applied, or above the risk ceiling are skipped — the tool continues with the remaining proposals.',
+    inputSchema: z.object({
+      proposal_ids: z
+        .array(z.string().min(1).max(100))
+        .min(1)
+        .max(50)
+        .describe('Array of proposal IDs to approve (1–50)'),
+      risk_ceiling: z
+        .enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'])
+        .optional()
+        .describe(
+          'Maximum risk level to approve. Proposals above this level are skipped. If omitted, all risk levels are approved.',
+        ),
+      reason: z
+        .string()
+        .max(500)
+        .optional()
+        .describe('Optional reason applied to all approvals'),
+    }),
+    annotations: {
+      readOnlyHint: false,
+      openWorldHint: false,
+    },
+    invocation: {
+      invoking: 'Batch approving knowledge updates…',
+      invoked: 'Batch approval complete.',
+    },
+  })
+  async batchApproveUpdates(
+    input: { proposal_ids: string[]; risk_ceiling?: string; reason?: string },
+    ctx: ExecutionContext,
+  ) {
+    ctx.logger.info('Running batch_approve_updates', {
+      count: input.proposal_ids.length,
+      risk_ceiling: input.risk_ceiling ?? '(none)',
+    });
+    return this.batchService.batchApprove(
+      input.proposal_ids,
+      input.risk_ceiling,
+      input.reason,
+    );
+  }
+
+  // ── Tool 13: generate_compliance_report ─────────────────────────────────
+
+  /**
+   * Generate a structured compliance report aggregating change detection,
+   * conflict analysis, risk scoring, and audit history into a single
+   * deliverable suitable for regulators and auditors.
+   */
+  @Tool({
+    name: 'generate_compliance_report',
+    description:
+      'Generate a structured compliance report aggregating all knowledge conflicts, risk assessments, remediation history, and per-department health metrics. The report includes a knowledge health percentage, outstanding conflicts sorted by risk, completed remediations from the audit log, and a department breakdown. Suitable for compliance officers and auditors.',
+    inputSchema: z.object({
+      department: z
+        .string()
+        .min(1)
+        .max(100)
+        .optional()
+        .describe('Scope the report to a specific department (e.g. "Sales", "Finance")'),
+      min_risk_level: z
+        .enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'])
+        .optional()
+        .describe('Minimum risk level to include in the report. Defaults to MEDIUM.'),
+      include_remediated: z
+        .boolean()
+        .optional()
+        .describe('Whether to include already-remediated items from the audit log. Defaults to true.'),
+    }),
+    annotations: {
+      readOnlyHint: true,
+      openWorldHint: false,
+    },
+    invocation: {
+      invoking: 'Generating compliance report…',
+      invoked: 'Compliance report generated.',
+    },
+  })
+  async generateComplianceReport(
+    input: {
+      department?: string;
+      min_risk_level?: string;
+      include_remediated?: boolean;
+    },
+    ctx: ExecutionContext,
+  ) {
+    ctx.logger.info('Running generate_compliance_report', {
+      department: input.department ?? '(all)',
+      min_risk_level: input.min_risk_level ?? 'MEDIUM',
+    });
+    return this.reportService.generateComplianceReport({
+      department: input.department,
+      minRiskLevel: input.min_risk_level,
+      includeRemediated: input.include_remediated,
+    });
+  }
+
+  // ── Tool 14: get_knowledge_drift_summary ────────────────────────────────
+
+  /**
+   * Compute overall knowledge staleness metrics in a single call —
+   * answers "How stale is our knowledge base?" with per-source breakdown.
+   */
+  @Tool({
+    name: 'get_knowledge_drift_summary',
+    description:
+      'Compute a single-call knowledge drift summary: staleness score (0–100, higher = more stale), total facts changed, conflict breakdown, most affected department, and highest-risk document. Includes a per-source drift breakdown. Use this as a quick health dashboard before deciding which tools to call for deeper investigation.',
+    inputSchema: z.object({
+      source_id: z
+        .string()
+        .min(1)
+        .max(100)
+        .optional()
+        .describe(
+          'Optional: scope to a specific source. If omitted, computes drift across ALL sources.',
+        ),
+    }),
+    annotations: {
+      readOnlyHint: true,
+      openWorldHint: false,
+    },
+    invocation: {
+      invoking: 'Computing knowledge drift metrics…',
+      invoked: 'Knowledge drift summary complete.',
+    },
+  })
+  async getKnowledgeDriftSummary(
+    input: { source_id?: string },
+    ctx: ExecutionContext,
+  ) {
+    ctx.logger.info('Running get_knowledge_drift_summary', {
+      source_id: input.source_id ?? '(all)',
+    });
+    return this.driftService.getDriftSummary(input.source_id);
   }
 }
